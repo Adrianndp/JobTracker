@@ -1,0 +1,114 @@
+.card {
+  display: flex;
+  background: #fff;
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  cursor: grab;
+  transition: box-shadow 0.15s, transform 0.1s, border-color 0.15s;
+  user-select: none;
+}
+
+.card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.card.dragging {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  transform: rotate(1.5deg) scale(1.02);
+  cursor: grabbing;
+  border-color: var(--accent);
+}
+
+.accent {
+  width: 3px;
+  flex-shrink: 0;
+  background: var(--accent);
+  border-radius: 0;
+}
+
+.content {
+  flex: 1;
+  padding: 0.7rem 0.75rem;
+  min-width: 0;
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  justify-content: space-between;
+}
+
+.name {
+  font-size: 0.855rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.4;
+  flex: 1;
+  word-break: break-word;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.editBtn,
+.deleteBtn {
+  background: none;
+  border: none;
+  padding: 3px;
+  cursor: pointer;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.editBtn:hover {
+  color: #d97706;
+  background: #fef3c7;
+}
+
+.deleteBtn:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.45rem;
+  font-size: 0.75rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+
+.link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.salary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+  font-size: 0.73rem;
+  color: #64748b;
+  background: #f8fafc;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
