@@ -1,8 +1,10 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from datetime import datetime
 import os
+
+DIST = os.path.join(os.path.dirname(__file__), 'dist')
 
 app = Flask(__name__)
 CORS(app)
@@ -86,5 +88,19 @@ def delete_job(job_id):
     return '', 204
 
 
+# Serve React in production (must be last — catches everything not matched above)
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_react(path):
+    if os.path.exists(DIST):
+        file = os.path.join(DIST, path)
+        if path and os.path.exists(file):
+            return send_from_directory(DIST, path)
+        return send_from_directory(DIST, 'index.html')
+    return jsonify({'error': 'Frontend not built'}), 404
+
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    port = int(os.environ.get('PORT', 5001))
+    debug = os.environ.get('FLASK_ENV') != 'production'
+    app.run(host='0.0.0.0', port=port, debug=debug)
