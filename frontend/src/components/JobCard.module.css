@@ -114,6 +114,15 @@
   text-decoration: underline;
 }
 
+.appliedDate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+  font-size: 0.73rem;
+  color: #64748b;
+}
+
 .meta {
   display: flex;
   flex-wrap: wrap;

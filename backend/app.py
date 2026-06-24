@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-from datetime import datetime
+from datetime import datetime, date
 import os
 
 DIST = os.path.join(os.path.dirname(__file__), 'dist')
@@ -24,6 +24,7 @@ class Job(db.Model):
     salary = db.Column(db.String(100), nullable=True)
     status = db.Column(db.String(50), default='to_be_applied')
     had_interview = db.Column(db.Boolean, default=False)
+    applied_date = db.Column(db.Date, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
@@ -35,6 +36,7 @@ class Job(db.Model):
             'salary': self.salary,
             'status': self.status,
             'had_interview': self.had_interview,
+            'applied_date': self.applied_date.isoformat() if self.applied_date else None,
             'created_at': self.created_at.isoformat(),
         }
 
@@ -45,6 +47,7 @@ with app.app_context():
     for col, ddl in [
         ('company', 'ALTER TABLE job ADD COLUMN company VARCHAR(200)'),
         ('had_interview', 'ALTER TABLE job ADD COLUMN had_interview BOOLEAN DEFAULT 0'),
+        ('applied_date', 'ALTER TABLE job ADD COLUMN applied_date DATE'),
     ]:
         try:
             with db.engine.connect() as conn:
@@ -87,6 +90,8 @@ def update_job(job_id):
 
     if 'status' in data and data['status'] in VALID_STATUSES:
         job.status = data['status']
+        if data['status'] == 'applied':
+            job.applied_date = date.today()
         if data['status'] == 'in_interview':
             job.had_interview = True
     if 'name' in data:
