@@ -19,24 +19,39 @@ VALID_STATUSES = ['to_be_applied', 'applied', 'in_interview', 'rejected', 'offer
 class Job(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
+    company = db.Column(db.String(200), nullable=True)
     link = db.Column(db.String(500), nullable=True)
     salary = db.Column(db.String(100), nullable=True)
     status = db.Column(db.String(50), default='to_be_applied')
+    had_interview = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
+            'company': self.company,
             'link': self.link,
             'salary': self.salary,
             'status': self.status,
+            'had_interview': self.had_interview,
             'created_at': self.created_at.isoformat(),
         }
 
 
 with app.app_context():
     db.create_all()
+    from sqlalchemy import text
+    for col, ddl in [
+        ('company', 'ALTER TABLE job ADD COLUMN company VARCHAR(200)'),
+        ('had_interview', 'ALTER TABLE job ADD COLUMN had_interview BOOLEAN DEFAULT 0'),
+    ]:
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(text(ddl))
+                conn.commit()
+        except Exception:
+            pass
 
 
 @app.route('/api/jobs', methods=['GET'])
@@ -50,9 +65,12 @@ def create_job():
     data = request.get_json()
     if not data or not data.get('name', '').strip():
         return jsonify({'error': 'Job title is required'}), 400
+    if not data.get('company', '').strip():
+        return jsonify({'error': 'Company is required'}), 400
 
     job = Job(
         name=data['name'].strip(),
+        company=data['company'].strip(),
         link=data.get('link') or None,
         salary=data.get('salary') or None,
         status='to_be_applied',
@@ -69,12 +87,18 @@ def update_job(job_id):
 
     if 'status' in data and data['status'] in VALID_STATUSES:
         job.status = data['status']
+        if data['status'] == 'in_interview':
+            job.had_interview = True
     if 'name' in data:
         job.name = data['name']
+    if 'company' in data:
+        job.company = data['company'] or None
     if 'link' in data:
         job.link = data['link'] or None
     if 'salary' in data:
         job.salary = data['salary'] or None
+    if 'had_interview' in data:
+        job.had_interview = bool(data['had_interview'])
 
     db.session.commit()
     return jsonify(job.to_dict())

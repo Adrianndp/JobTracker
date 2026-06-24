@@ -43,13 +43,27 @@
   justify-content: space-between;
 }
 
+.titleGroup {
+  flex: 1;
+  min-width: 0;
+}
+
 .name {
   font-size: 0.855rem;
   font-weight: 600;
   color: #1e293b;
   line-height: 1.4;
-  flex: 1;
   word-break: break-word;
+}
+
+.company {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  font-weight: 500;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .actions {
@@ -100,15 +114,35 @@
   text-decoration: underline;
 }
 
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
 .salary {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  margin-top: 0.4rem;
   font-size: 0.73rem;
   color: #64748b;
   background: #f8fafc;
   padding: 2px 7px;
   border-radius: 4px;
   border: 1px solid #e2e8f0;
+}
+
+.interviewBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: #7c3aed;
+  background: #f5f3ff;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid #ddd6fe;
 }

@@ -30,7 +30,10 @@ export default function JobCard({ job, index, color, onDelete, onEdit }) {
           <div className={styles.accent} />
           <div className={styles.content}>
             <div className={styles.top}>
-              <p className={styles.name}>{job.name}</p>
+              <div className={styles.titleGroup}>
+                <p className={styles.name}>{job.name}</p>
+                {job.company && <p className={styles.company}>{job.company}</p>}
+              </div>
               <div className={styles.actions}>
                 <button
                   className={styles.editBtn}
@@ -74,15 +77,28 @@ export default function JobCard({ job, index, color, onDelete, onEdit }) {
               </a>
             )}
 
-            {job.salary && (
-              <div className={styles.salary}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <line x1="12" y1="1" x2="12" y2="23" />
-                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                </svg>
-                {job.salary}
-              </div>
-            )}
+            <div className={styles.meta}>
+              {job.salary && (
+                <div className={styles.salary}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="12" y1="1" x2="12" y2="23" />
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                  {job.salary}
+                </div>
+              )}
+              {job.had_interview && (
+                <div className={styles.interviewBadge}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                  Interviewed
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

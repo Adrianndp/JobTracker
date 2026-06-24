@@ -5,8 +5,10 @@ export default function AddJobModal({ onClose, onAdd, onSave, job }) {
   const isEdit = Boolean(job)
   const [form, setForm] = useState({
     name: job?.name ?? '',
+    company: job?.company ?? '',
     link: job?.link ?? '',
     salary: job?.salary ?? '',
+    had_interview: job?.had_interview ?? false,
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,11 +22,16 @@ export default function AddJobModal({ onClose, onAdd, onSave, job }) {
   }, [onClose])
 
   const set = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }))
+  const toggle = (field) => () => setForm(f => ({ ...f, [field]: !f[field] }))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.name.trim()) {
       setError('Job title is required.')
+      return
+    }
+    if (!form.company.trim()) {
+      setError('Company is required.')
       return
     }
     setError('')
@@ -75,9 +82,23 @@ export default function AddJobModal({ onClose, onAdd, onSave, job }) {
               ref={firstInput}
               type="text"
               className={styles.input}
-              placeholder="e.g. Senior Frontend Engineer at Stripe"
+              placeholder="e.g. Senior Frontend Engineer"
               value={form.name}
               onChange={set('name')}
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>
+              Company
+              <span className={styles.required}>*</span>
+            </label>
+            <input
+              type="text"
+              className={styles.input}
+              placeholder="e.g. Stripe"
+              value={form.company}
+              onChange={set('company')}
             />
           </div>
 
@@ -105,6 +126,21 @@ export default function AddJobModal({ onClose, onAdd, onSave, job }) {
               onChange={set('salary')}
             />
           </div>
+
+          {isEdit && (
+            <div className={styles.field}>
+              <button
+                type="button"
+                className={`${styles.toggleBtn} ${form.had_interview ? styles.toggleBtnOn : ''}`}
+                onClick={toggle('had_interview')}
+              >
+                <span className={styles.toggleTrack}>
+                  <span className={styles.toggleThumb} />
+                </span>
+                Had an interview
+              </button>
+            </div>
+          )}
 
           {error && <p className={styles.error}>{error}</p>}
 
