@@ -92,7 +92,7 @@
   background: var(--col-light);
 }
 
-/* ── Empty state ─────────────────────────────────── */
+/* ── Empty / drop zone ───────────────────────────── */
 .empty {
   text-align: center;
   color: #cbd5e1;
@@ -101,4 +101,11 @@
   border: 2px dashed #e2e8f0;
   border-radius: 8px;
   user-select: none;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.emptyDragOver {
+  border-color: var(--col-color);
+  color: var(--col-color);
+  background: var(--col-light);
 }
