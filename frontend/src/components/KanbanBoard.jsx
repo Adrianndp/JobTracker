@@ -19,7 +19,7 @@ export const COLUMNS = [
   },
   {
     id: 'in_interview',
-    label: 'In Interview Process',
+    label: 'In Interview',
     color: '#8b5cf6',
     lightColor: '#f5f3ff',
     emoji: null,

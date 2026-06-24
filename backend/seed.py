@@ -65,7 +65,7 @@ jobs = [
         'status': 'applied',
     },
 
-    # ── In Interview Process ─────────────────────────────────────────────────
+    # ── In Interview ─────────────────────────────────────────────────
     {
         'name': 'Ratbacher / risiq – Backend Developer Python / Data Engineer',
         'link': 'https://www.ratbacher.com/de/it-jobs/backend-entwickler-python-m-w-d-data-engineer-python-46384/',
