@@ -40,7 +40,7 @@ export const COLUMNS = [
   },
 ]
 
-export default function KanbanBoard({ jobs, onMove, onDelete, onEdit }) {
+export default function KanbanBoard({ jobs, onMove, onDelete, onEdit, forceExpanded }) {
   const handleDragEnd = ({ draggableId, destination }) => {
     if (!destination) return
     onMove(parseInt(draggableId), destination.droppableId)
@@ -56,6 +56,7 @@ export default function KanbanBoard({ jobs, onMove, onDelete, onEdit }) {
             jobs={jobs.filter(j => j.status === col.id)}
             onDelete={onDelete}
             onEdit={onEdit}
+            forceExpanded={forceExpanded}
           />
         ))}
       </div>

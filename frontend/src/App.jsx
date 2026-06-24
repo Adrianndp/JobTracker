@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import KanbanBoard from './components/KanbanBoard'
 import AddJobModal from './components/AddJobModal'
+import CompanyFilter from './components/CompanyFilter'
 import styles from './App.module.css'
 
 const API = '/api/jobs'
@@ -10,6 +11,16 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingJob, setEditingJob] = useState(null)
+  const [companyFilters, setCompanyFilters] = useState([])
+
+  const companies = useMemo(
+    () => [...new Set(jobs.map(j => j.company).filter(Boolean))].sort(),
+    [jobs]
+  )
+
+  const visibleJobs = companyFilters.length === 0
+    ? jobs
+    : jobs.filter(j => companyFilters.includes(j.company))
 
   useEffect(() => {
     fetch(API)
@@ -87,7 +98,20 @@ export default function App() {
             <span>Loading jobs...</span>
           </div>
         ) : (
-          <KanbanBoard jobs={jobs} onMove={moveJob} onDelete={deleteJob} onEdit={setEditingJob} />
+          <>
+            <CompanyFilter
+              companies={companies}
+              filters={companyFilters}
+              onFiltersChange={setCompanyFilters}
+            />
+            <KanbanBoard
+              jobs={visibleJobs}
+              onMove={moveJob}
+              onDelete={deleteJob}
+              onEdit={setEditingJob}
+              forceExpanded={companyFilters.length > 0}
+            />
+          </>
         )}
       </main>
 

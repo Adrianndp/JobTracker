@@ -3,11 +3,11 @@ import { Droppable } from '@hello-pangea/dnd'
 import JobCard from './JobCard'
 import styles from './KanbanColumn.module.css'
 
-export default function KanbanColumn({ column, jobs, onDelete, onEdit }) {
+export default function KanbanColumn({ column, jobs, onDelete, onEdit, forceExpanded }) {
   const [collapsed, setCollapsed] = useState(true)
 
-  // Only collapse when there are cards — empty columns are always open
-  const isCollapsed = collapsed && jobs.length > 0
+  // Empty columns are always open; active filter forces all columns open
+  const isCollapsed = !forceExpanded && collapsed && jobs.length > 0
 
   return (
     <div className={styles.column} style={{ '--col-color': column.color, '--col-light': column.lightColor }}>

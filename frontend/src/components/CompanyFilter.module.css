@@ -1,0 +1,148 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.45rem 0.75rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.searchIcon {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Active filter chips ─────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #eef2ff;
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 3px 6px 3px 8px;
+  white-space: nowrap;
+}
+
+.chipX {
+  background: none;
+  border: none;
+  padding: 1px;
+  cursor: pointer;
+  color: #818cf8;
+  display: flex;
+  align-items: center;
+  border-radius: 3px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.chipX:hover {
+  color: #4338ca;
+  background: #c7d2fe;
+}
+
+/* ── Text input ──────────────────────────────────── */
+.inputWrap {
+  position: relative;
+  flex: 1;
+  min-width: 140px;
+}
+
+.input {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-size: 0.855rem;
+  color: #1e293b;
+  background: transparent;
+  font-family: inherit;
+  padding: 2px 0;
+}
+
+.input::placeholder {
+  color: #94a3b8;
+}
+
+/* ── Suggestions dropdown ────────────────────────── */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: -0.75rem;
+  min-width: 200px;
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  z-index: 200;
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  background: none;
+  border: none;
+  border-radius: 7px;
+  font-size: 0.845rem;
+  font-weight: 500;
+  color: #374151;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+}
+
+.option svg {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.option:hover {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.option:hover svg {
+  color: #6366f1;
+}
+
+/* ── Clear all ───────────────────────────────────── */
+.clearAll {
+  background: none;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-family: inherit;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.clearAll:hover {
+  color: #ef4444;
+}
