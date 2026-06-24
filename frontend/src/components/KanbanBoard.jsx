@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { DragDropContext } from '@hello-pangea/dnd'
 import KanbanColumn from './KanbanColumn'
 import styles from './KanbanBoard.module.css'
@@ -48,9 +49,14 @@ export const COLUMNS = [
 ]
 
 export default function KanbanBoard({ jobs, onMove, onDelete, onEdit, forceExpanded }) {
+  const [collapsedCols, setCollapsedCols] = useState(
+    () => Object.fromEntries(COLUMNS.map(c => [c.id, true]))
+  )
+
   const handleDragEnd = ({ draggableId, destination }) => {
     if (!destination) return
     onMove(parseInt(draggableId), destination.droppableId)
+    setCollapsedCols(prev => ({ ...prev, [destination.droppableId]: false }))
   }
 
   return (
@@ -64,6 +70,8 @@ export default function KanbanBoard({ jobs, onMove, onDelete, onEdit, forceExpan
             onDelete={onDelete}
             onEdit={onEdit}
             forceExpanded={forceExpanded}
+            collapsed={collapsedCols[col.id]}
+            onToggle={() => setCollapsedCols(prev => ({ ...prev, [col.id]: !prev[col.id] }))}
           />
         ))}
       </div>

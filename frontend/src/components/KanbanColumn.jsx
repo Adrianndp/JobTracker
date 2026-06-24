@@ -1,11 +1,8 @@
-import { useState } from 'react'
 import { Droppable } from '@hello-pangea/dnd'
 import JobCard from './JobCard'
 import styles from './KanbanColumn.module.css'
 
-export default function KanbanColumn({ column, jobs, onDelete, onEdit, forceExpanded }) {
-  const [collapsed, setCollapsed] = useState(true)
-
+export default function KanbanColumn({ column, jobs, onDelete, onEdit, forceExpanded, collapsed, onToggle }) {
   // Empty columns are always open; active filter forces all columns open
   const isCollapsed = !forceExpanded && collapsed && jobs.length > 0
 
@@ -13,7 +10,7 @@ export default function KanbanColumn({ column, jobs, onDelete, onEdit, forceExpa
     <div className={styles.column} style={{ '--col-color': column.color, '--col-light': column.lightColor }}>
       <button
         className={styles.header}
-        onClick={() => jobs.length > 0 && setCollapsed(c => !c)}
+        onClick={() => jobs.length > 0 && onToggle()}
         style={jobs.length === 0 ? { cursor: 'default' } : {}}
       >
         <div className={styles.headerLeft}>

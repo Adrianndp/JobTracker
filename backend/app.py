@@ -24,7 +24,7 @@ class Job(db.Model):
     salary = db.Column(db.String(100), nullable=True)
     status = db.Column(db.String(50), default='to_be_applied')
     had_interview = db.Column(db.Boolean, default=False)
-    applied_date = db.Column(db.Date, nullable=True)
+    applied_date = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
@@ -36,7 +36,7 @@ class Job(db.Model):
             'salary': self.salary,
             'status': self.status,
             'had_interview': self.had_interview,
-            'applied_date': self.applied_date.isoformat() if self.applied_date else None,
+            'applied_date': self.applied_date.isoformat() + 'Z' if self.applied_date else None,
             'created_at': self.created_at.isoformat(),
         }
 
@@ -91,7 +91,7 @@ def update_job(job_id):
     if 'status' in data and data['status'] in VALID_STATUSES:
         job.status = data['status']
         if data['status'] == 'applied':
-            job.applied_date = date.today()
+            job.applied_date = datetime.utcnow()
         if data['status'] == 'in_interview':
             job.had_interview = True
     if 'name' in data:

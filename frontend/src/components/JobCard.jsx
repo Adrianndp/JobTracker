@@ -3,8 +3,10 @@ import styles from './JobCard.module.css'
 
 const formatDate = (iso) => {
   if (!iso) return null
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 
 export default function JobCard({ job, index, color, onDelete, onEdit }) {
