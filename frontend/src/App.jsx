@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import KanbanBoard from './components/KanbanBoard'
+import KanbanBoard, { COLUMNS } from './components/KanbanBoard'
 import AddJobModal from './components/AddJobModal'
 import CompanyFilter from './components/CompanyFilter'
 import styles from './App.module.css'
@@ -12,6 +12,9 @@ export default function App() {
   const [showModal, setShowModal] = useState(false)
   const [editingJob, setEditingJob] = useState(null)
   const [companyFilters, setCompanyFilters] = useState([])
+  const [collapsedCols, setCollapsedCols] = useState(
+    () => Object.fromEntries(COLUMNS.map(c => [c.id, true]))
+  )
 
   const companies = useMemo(
     () => [...new Set(jobs.map(j => j.company).filter(Boolean))].sort(),
@@ -38,6 +41,7 @@ export default function App() {
     if (!res.ok) throw new Error('Failed to add job')
     const job = await res.json()
     setJobs(prev => [job, ...prev])
+    setCollapsedCols(prev => ({ ...prev, to_be_applied: false }))
     setShowModal(false)
   }
 
@@ -110,6 +114,8 @@ export default function App() {
               onDelete={deleteJob}
               onEdit={setEditingJob}
               forceExpanded={companyFilters.length > 0}
+              collapsedCols={collapsedCols}
+              setCollapsedCols={setCollapsedCols}
             />
           </>
         )}

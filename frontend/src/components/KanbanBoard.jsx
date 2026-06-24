@@ -48,11 +48,7 @@ export const COLUMNS = [
   },
 ]
 
-export default function KanbanBoard({ jobs, onMove, onDelete, onEdit, forceExpanded }) {
-  const [collapsedCols, setCollapsedCols] = useState(
-    () => Object.fromEntries(COLUMNS.map(c => [c.id, true]))
-  )
-
+export default function KanbanBoard({ jobs, onMove, onDelete, onEdit, forceExpanded, collapsedCols, setCollapsedCols }) {
   const handleDragEnd = ({ draggableId, destination }) => {
     if (!destination) return
     onMove(parseInt(draggableId), destination.droppableId)
