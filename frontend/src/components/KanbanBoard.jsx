@@ -25,6 +25,13 @@ export const COLUMNS = [
     emoji: null,
   },
   {
+    id: 'ghosted',
+    label: 'Ghosted',
+    color: '#64748b',
+    lightColor: '#f8fafc',
+    emoji: null,
+  },
+  {
     id: 'rejected',
     label: 'Got Rejected',
     color: '#ef4444',

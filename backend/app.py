@@ -13,7 +13,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-VALID_STATUSES = ['to_be_applied', 'applied', 'in_interview', 'rejected', 'offer']
+VALID_STATUSES = ['to_be_applied', 'applied', 'in_interview', 'rejected', 'offer', 'ghosted']
 
 
 class Job(db.Model):
