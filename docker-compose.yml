@@ -1,0 +1,27 @@
+services:
+  backend:
+    build: ./backend
+    container_name: jobtracker-backend
+    environment:
+      FLASK_ENV: production
+    volumes:
+      - ./backend/instance:/app/instance   # existing jobs.db lives here
+    ports:
+      - "127.0.0.1:5001:5001"              # direct API access / debugging (host only)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/api/jobs', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: jobtracker-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

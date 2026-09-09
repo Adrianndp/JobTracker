@@ -11,6 +11,41 @@ A kanban-style job application tracker built with Flask + React.
 
 
 
+## Run with Docker
+
+```bash
+docker compose up --build
+```
+
+- App: http://localhost:3000
+- Backend API (direct): http://localhost:5001
+- Database: persists on the host at `backend/instance/jobs.db` (bind-mounted, so it survives rebuilds/restarts and is reachable from DB Browser for SQLite or `import_jobs.py`)
+
+Stop with:
+
+```bash
+docker compose down
+```
+
+## Run manually (dev)
+
+Backend (Flask, port 5001):
+
+```bash
+cd backend
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```
+
+Frontend (Vite, port 3000, proxies `/api` → `localhost:5001`):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
 ## Import from CSV
 command in backend withh venv activated
 "python import_jobs"
