@@ -131,16 +131,8 @@ export default function App() {
             </span>
             <h1 className={styles.brandName}>Job Tracker</h1>
           </button>
+          <span className={styles.boardTitle}>{auth.username}'s Job Board</span>
           <div className={styles.headerActions}>
-            <button className={styles.addBtn} onClick={() => setShowModal(true)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              Add Job
-            </button>
-            <span className={styles.divider} />
-            <span className={styles.username} title={auth.username}>{auth.username}</span>
             <button className={styles.logoutBtn} onClick={handleLogout} title="Log out" aria-label="Log out">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -161,11 +153,20 @@ export default function App() {
           </div>
         ) : (
           <>
-            <CompanyFilter
-              companies={companies}
-              filters={companyFilters}
-              onFiltersChange={setCompanyFilters}
-            />
+            <div className={styles.filterRow}>
+              <CompanyFilter
+                companies={companies}
+                filters={companyFilters}
+                onFiltersChange={setCompanyFilters}
+              />
+              <button className={styles.addBtn} onClick={() => setShowModal(true)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add Job
+              </button>
+            </div>
             <KanbanBoard
               jobs={visibleJobs}
               onMove={moveJob}

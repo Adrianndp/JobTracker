@@ -18,9 +18,10 @@
   width: min(100% - 3rem, 1800px);
   margin: 0 auto;
   height: 64px;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
+  gap: 1rem;
 }
 
 @media (min-width: 1024px) {
@@ -33,6 +34,7 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  min-width: 0;
   background: none;
   border: none;
   padding: 0.25rem;
@@ -41,6 +43,7 @@
   font-family: inherit;
   cursor: pointer;
   transition: background 0.15s;
+  justify-self: start;
 }
 
 .brand:hover {
@@ -61,6 +64,20 @@
   font-weight: 700;
   color: #f1f5f9;
   letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.boardTitle {
+  justify-self: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .addBtn {
@@ -93,24 +110,9 @@
 .headerActions {
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: 0.75rem;
   min-width: 0;
-}
-
-.divider {
-  width: 1px;
-  height: 20px;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.username {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #cbd5e1;
-  max-width: 160px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .logoutBtn {
@@ -136,14 +138,31 @@
 }
 
 @media (max-width: 639px) {
-  .username,
-  .divider,
   .logoutLabel {
     display: none;
   }
 
   .logoutBtn {
     padding: 0.45rem;
+  }
+
+  .boardTitle {
+    display: none;
+  }
+}
+
+/* ── Filter row ──────────────────────────────────── */
+.filterRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 639px) {
+  .filterRow {
+    flex-wrap: wrap;
   }
 }
 
