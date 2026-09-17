@@ -3,7 +3,8 @@
   background: #fff;
   border-radius: 10px;
   margin-bottom: 0.5rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e6e9ef;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   overflow: hidden;
   cursor: grab;
   transition: box-shadow 0.15s, transform 0.1s, border-color 0.15s;
@@ -100,7 +101,6 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  margin-top: 0.45rem;
   font-size: 0.75rem;
   color: var(--accent);
   text-decoration: none;
@@ -114,40 +114,48 @@
   text-decoration: underline;
 }
 
+/* ── Compact metadata rows ───────────────────────── */
+.metaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 .appliedDate {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  margin-top: 0.4rem;
   font-size: 0.73rem;
   color: #64748b;
-}
-
-.meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.4rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .salary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
   font-size: 0.73rem;
-  color: #64748b;
-  background: #f8fafc;
-  padding: 2px 7px;
-  border-radius: 4px;
-  border: 1px solid #e2e8f0;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.footerRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
 }
 
 .interviewBadge {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  font-size: 0.73rem;
+  font-size: 0.71rem;
   font-weight: 600;
   color: #7c3aed;
   background: #f5f3ff;
