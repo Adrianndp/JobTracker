@@ -79,6 +79,12 @@ export default function App() {
     setEditingJob(null)
   }
 
+  const toggleAllColumns = () => {
+    const nonEmptyCols = COLUMNS.filter(col => visibleJobs.some(j => j.status === col.id))
+    const allExpanded = nonEmptyCols.length > 0 && nonEmptyCols.every(col => collapsedCols[col.id] === false)
+    setCollapsedCols(Object.fromEntries(COLUMNS.map(c => [c.id, allExpanded])))
+  }
+
   const removeJob = async (jobId) => {
     try {
       await deleteJob(jobId)
@@ -112,7 +118,11 @@ export default function App() {
     <div className={styles.app}>
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <div className={styles.brand}>
+          <button
+            className={styles.brand}
+            onClick={toggleAllColumns}
+            title="Expand or collapse all columns"
+          >
             <span className={styles.brandIcon}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="7" width="20" height="14" rx="2" />
@@ -120,7 +130,7 @@ export default function App() {
               </svg>
             </span>
             <h1 className={styles.brandName}>Job Tracker</h1>
-          </div>
+          </button>
           <div className={styles.headerActions}>
             <button className={styles.addBtn} onClick={() => setShowModal(true)}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
