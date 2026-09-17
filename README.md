@@ -11,6 +11,42 @@ A kanban-style job application tracker built with Flask + React.
 
 
 
+## Project structure
+
+```
+backend/
+  app.py            Flask app: config, blueprint registration, table setup, health check, serves the built frontend
+  extensions.py     shared SQLAlchemy instance (db)
+  models/
+    user.py         User account (password hashing, session versioning)
+    job.py          Job + valid statuses
+  views/
+    users.py        /api/auth/* (status, signup, login, logout), login guard, `reset-password` CLI command
+    jobs.py         /api/jobs CRUD
+  import_jobs.py    CSV import
+  seed.py           sample data
+frontend/src/
+  App.jsx           auth gate, board state, API calls
+  components/       LoginPage, KanbanBoard, KanbanColumn, JobCard, AddJobModal, CompanyFilter
+```
+
+## Login
+
+The tracker has a single account and requires signing in.
+
+- **First run:** open the app and you'll see "Create your account". Choose a username and a password (at least 8 characters). Sign-up closes once that account exists.
+- **Forgot your password:** reset it from the backend (this also signs out every existing session):
+
+  ```bash
+  cd backend && source venv/bin/activate
+  flask --app app reset-password
+  # or with Docker:
+  docker compose exec backend flask --app app reset-password
+  ```
+
+- **Sessions** last 30 days. They're signed with a key generated once into `backend/instance/secret_key`. Set `SECRET_KEY` to override it. Set `SESSION_COOKIE_SECURE=1` if you serve the app over HTTPS.
+- After 5 failed sign-in attempts, sign-in is blocked for 5 minutes. Behind Docker's nginx every request comes from the same proxy address, so this lock applies to everyone at once.
+
 ## Run with Docker
 
 ```bash

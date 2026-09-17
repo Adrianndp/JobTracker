@@ -1,53 +1,64 @@
-from flask import Flask, jsonify, request, send_from_directory
-from flask_sqlalchemy import SQLAlchemy
-from flask_cors import CORS
-from datetime import datetime, date
 import os
+import secrets
+import time
+from datetime import timedelta
+
+from flask import Flask, jsonify, send_from_directory
+from sqlalchemy import text
+
+from extensions import db
+from models import Job, User, VALID_STATUSES
+from views import jobs_bp, users_bp
+
+__all__ = ['app', 'db', 'Job', 'User', 'VALID_STATUSES']
 
 DIST = os.path.join(os.path.dirname(__file__), 'dist')
 
 app = Flask(__name__)
-CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///jobs.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db = SQLAlchemy(app)
-
-VALID_STATUSES = ['to_be_applied', 'applied', 'in_interview', 'rejected', 'offer', 'ghosted']
 
 
-class Job(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
-    company = db.Column(db.String(200), nullable=True)
-    link = db.Column(db.String(500), nullable=True)
-    salary = db.Column(db.String(100), nullable=True)
-    status = db.Column(db.String(50), default='to_be_applied')
-    had_interview = db.Column(db.Boolean, default=False)
-    applied_date = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+def load_secret_key():
+    if os.environ.get('SECRET_KEY'):
+        return os.environ['SECRET_KEY']
+    os.makedirs(app.instance_path, exist_ok=True)
+    path = os.path.join(app.instance_path, 'secret_key')
+    try:
+        # O_EXCL so concurrent gunicorn workers can't each write a different key
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w') as f:
+            f.write(secrets.token_hex(32))
+    except FileExistsError:
+        pass
+    for _ in range(50):
+        with open(path) as f:
+            key = f.read().strip()
+        if key:
+            return key
+        time.sleep(0.01)
+    raise RuntimeError(f'Secret key file {path} is empty')
 
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'company': self.company,
-            'link': self.link,
-            'salary': self.salary,
-            'status': self.status,
-            'had_interview': self.had_interview,
-            'applied_date': self.applied_date.isoformat() + 'Z' if self.applied_date else None,
-            'created_at': self.created_at.isoformat(),
-        }
 
+app.config.update(
+    SQLALCHEMY_DATABASE_URI='sqlite:///jobs.db',
+    SQLALCHEMY_TRACK_MODIFICATIONS=False,
+    SECRET_KEY=load_secret_key(),
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=os.environ.get('SESSION_COOKIE_SECURE') == '1',
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+)
+
+db.init_app(app)
+app.register_blueprint(users_bp)
+app.register_blueprint(jobs_bp)
 
 with app.app_context():
     db.create_all()
-    from sqlalchemy import text
-    for col, ddl in [
-        ('company', 'ALTER TABLE job ADD COLUMN company VARCHAR(200)'),
-        ('had_interview', 'ALTER TABLE job ADD COLUMN had_interview BOOLEAN DEFAULT 0'),
-        ('applied_date', 'ALTER TABLE job ADD COLUMN applied_date DATE'),
+    for ddl in [
+        'ALTER TABLE job ADD COLUMN company VARCHAR(200)',
+        'ALTER TABLE job ADD COLUMN had_interview BOOLEAN DEFAULT 0',
+        'ALTER TABLE job ADD COLUMN applied_date DATE',
+        'ALTER TABLE user ADD COLUMN email VARCHAR(255)',
     ]:
         try:
             with db.engine.connect() as conn:
@@ -57,64 +68,9 @@ with app.app_context():
             pass
 
 
-@app.route('/api/jobs', methods=['GET'])
-def get_jobs():
-    jobs = Job.query.order_by(Job.created_at.desc()).all()
-    return jsonify([j.to_dict() for j in jobs])
-
-
-@app.route('/api/jobs', methods=['POST'])
-def create_job():
-    data = request.get_json()
-    if not data or not data.get('name', '').strip():
-        return jsonify({'error': 'Job title is required'}), 400
-    if not data.get('company', '').strip():
-        return jsonify({'error': 'Company is required'}), 400
-
-    job = Job(
-        name=data['name'].strip(),
-        company=data['company'].strip(),
-        link=data.get('link') or None,
-        salary=data.get('salary') or None,
-        status='to_be_applied',
-    )
-    db.session.add(job)
-    db.session.commit()
-    return jsonify(job.to_dict()), 201
-
-
-@app.route('/api/jobs/<int:job_id>', methods=['PATCH'])
-def update_job(job_id):
-    job = Job.query.get_or_404(job_id)
-    data = request.get_json()
-
-    if 'status' in data and data['status'] in VALID_STATUSES:
-        job.status = data['status']
-        if data['status'] == 'applied':
-            job.applied_date = datetime.utcnow()
-        if data['status'] == 'in_interview':
-            job.had_interview = True
-    if 'name' in data:
-        job.name = data['name']
-    if 'company' in data:
-        job.company = data['company'] or None
-    if 'link' in data:
-        job.link = data['link'] or None
-    if 'salary' in data:
-        job.salary = data['salary'] or None
-    if 'had_interview' in data:
-        job.had_interview = bool(data['had_interview'])
-
-    db.session.commit()
-    return jsonify(job.to_dict())
-
-
-@app.route('/api/jobs/<int:job_id>', methods=['DELETE'])
-def delete_job(job_id):
-    job = Job.query.get_or_404(job_id)
-    db.session.delete(job)
-    db.session.commit()
-    return '', 204
+@app.route('/api/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'ok'})
 
 
 # Serve React in production (must be last — catches everything not matched above)

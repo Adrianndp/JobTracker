@@ -2,11 +2,14 @@ import { useState, useEffect, useMemo } from 'react'
 import KanbanBoard, { COLUMNS } from './components/KanbanBoard'
 import AddJobModal from './components/AddJobModal'
 import CompanyFilter from './components/CompanyFilter'
+import LoginPage from './components/LoginPage'
 import styles from './App.module.css'
 
 const API = '/api/jobs'
 
 export default function App() {
+  // status: 'checking' | 'setup' | 'login' | 'authenticated'
+  const [auth, setAuth] = useState({ status: 'checking', username: null })
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -25,15 +28,57 @@ export default function App() {
     ? jobs
     : jobs.filter(j => companyFilters.includes(j.company))
 
-  useEffect(() => {
-    fetch(API)
+  const checkAuth = () =>
+    fetch('/api/auth/status')
       .then(r => r.json())
-      .then(data => setJobs(data))
-      .finally(() => setLoading(false))
+      .then(data => setAuth({
+        status: data.authenticated ? 'authenticated' : data.setup_required ? 'setup' : 'login',
+        username: data.username,
+      }))
+      .catch(() => setAuth({ status: 'login', username: null }))
+
+  useEffect(() => {
+    checkAuth()
   }, [])
 
+  const resetBoard = () => {
+    setJobs([])
+    setShowModal(false)
+    setEditingJob(null)
+    setCompanyFilters([])
+    setLoading(true)
+  }
+
+  const apiFetch = async (url, options) => {
+    const res = await fetch(url, options)
+    if (res.status === 401) {
+      resetBoard()
+      setAuth({ status: 'login', username: null })
+      throw new Error('Session expired')
+    }
+    return res
+  }
+
+  useEffect(() => {
+    if (auth.status !== 'authenticated') return
+    apiFetch(API)
+      .then(r => r.json())
+      .then(data => setJobs(data))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [auth.status])
+
+  const logout = async () => {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    }).catch(() => {})
+    resetBoard()
+    setAuth({ status: 'login', username: null })
+  }
+
   const addJob = async (formData) => {
-    const res = await fetch(API, {
+    const res = await apiFetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData),
@@ -46,7 +91,7 @@ export default function App() {
   }
 
   const moveJob = async (jobId, newStatus) => {
-    const res = await fetch(`${API}/${jobId}`, {
+    const res = await apiFetch(`${API}/${jobId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),
@@ -56,7 +101,7 @@ export default function App() {
   }
 
   const updateJob = async (jobId, formData) => {
-    const res = await fetch(`${API}/${jobId}`, {
+    const res = await apiFetch(`${API}/${jobId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData),
@@ -68,8 +113,28 @@ export default function App() {
   }
 
   const deleteJob = async (jobId) => {
-    await fetch(`${API}/${jobId}`, { method: 'DELETE' })
+    await apiFetch(`${API}/${jobId}`, { method: 'DELETE' })
     setJobs(prev => prev.filter(j => j.id !== jobId))
+  }
+
+  if (auth.status === 'checking') {
+    return (
+      <div className={styles.app}>
+        <div className={styles.loading}>
+          <div className={styles.spinner} />
+        </div>
+      </div>
+    )
+  }
+
+  if (auth.status !== 'authenticated') {
+    return (
+      <LoginPage
+        key={auth.status}
+        setupRequired={auth.status === 'setup'}
+        onAuthenticated={username => setAuth({ status: 'authenticated', username })}
+      />
+    )
   }
 
   return (
@@ -85,13 +150,25 @@ export default function App() {
             </span>
             <h1 className={styles.brandName}>Job Tracker</h1>
           </div>
-          <button className={styles.addBtn} onClick={() => setShowModal(true)}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Add Job
-          </button>
+          <div className={styles.headerActions}>
+            <button className={styles.addBtn} onClick={() => setShowModal(true)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Add Job
+            </button>
+            <span className={styles.divider} />
+            <span className={styles.username} title={auth.username}>{auth.username}</span>
+            <button className={styles.logoutBtn} onClick={logout} title="Log out" aria-label="Log out">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              <span className={styles.logoutLabel}>Log out</span>
+            </button>
+          </div>
         </div>
       </header>
 
