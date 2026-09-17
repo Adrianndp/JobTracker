@@ -1,13 +1,13 @@
 # Job Tracker
 
-A kanban-style job application tracker built with Flask + React.
+A kanban-style job application tracker built with Django + React.
 
 ## Features
 - 5-column kanban: To Be Applied → Applied → In Interview → Got Rejected / Got an Offer
 - Drag cards between columns
 - Add jobs via modal (title required, URL and salary optional)
 - Delete cards with confirmation
-- SQLite database via SQLAlchemy (auto-created on first run)
+- SQLite database via the Django ORM
 
 
 
@@ -15,16 +15,17 @@ A kanban-style job application tracker built with Flask + React.
 
 ```
 backend/
-  app.py            Flask app: config, blueprint registration, table setup, health check, serves the built frontend
-  extensions.py     shared SQLAlchemy instance (db)
-  models/
-    user.py         User account (password hashing, session versioning)
-    job.py          Job + valid statuses
-  views/
-    users.py        /api/auth/* (status, signup, login, logout), login guard, `reset-password` CLI command
-    jobs.py         /api/jobs CRUD
-  import_jobs.py    CSV import
-  seed.py           sample data
+  manage.py         Django entry point (`runserver` defaults to port 5001)
+  config/           settings (secret key, sessions, SQLite), URL routes, health check, serves the built frontend
+  accounts/
+    models.py       User account (password hashing, session versioning)
+    middleware.py   API guard: JSON-only writes, login required
+    views.py        /api/auth/* (status, signup, login, logout)
+    management/commands/reset_password.py
+  jobs/
+    models.py       Job + valid statuses
+    views.py        /api/jobs CRUD
+    management/commands/import_jobs.py, seed.py
 frontend/src/
   App.jsx           auth gate, board state, API calls
   components/       LoginPage, KanbanBoard, KanbanColumn, JobCard, AddJobModal, CompanyFilter
@@ -39,9 +40,9 @@ The tracker has a single account and requires signing in.
 
   ```bash
   cd backend && source venv/bin/activate
-  flask --app app reset-password
+  python manage.py reset_password
   # or with Docker:
-  docker compose exec backend flask --app app reset-password
+  docker compose exec backend python manage.py reset_password
   ```
 
 - **Sessions** last 30 days. They're signed with a key generated once into `backend/instance/secret_key`. Set `SECRET_KEY` to override it. Set `SESSION_COOKIE_SECURE=1` if you serve the app over HTTPS.
@@ -65,14 +66,17 @@ docker compose down
 
 ## Run manually (dev)
 
-Backend (Flask, port 5001):
+Backend (Django, port 5001):
 
 ```bash
 cd backend
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-python app.py
+python manage.py migrate --fake-initial   # creates the tables, or adopts a jobs.db from the old Flask backend
+python manage.py runserver
 ```
+
+Run `python manage.py migrate` again after pulling changes that add migrations. Docker does this on startup.
 
 Frontend (Vite, port 3000, proxies `/api` → `localhost:5001`):
 
@@ -83,9 +87,14 @@ npm run dev
 ```
 
 ## Import from CSV
-command in backend withh venv activated
-"python import_jobs"
-and have your jobs.csv ready you can do it if you have DB Browser for SQL Lite
+
+In `backend/` with the venv activated, put your `job.csv` there (e.g. exported from DB Browser for SQLite) and run:
+
+```bash
+python manage.py import_jobs            # or: python manage.py import_jobs path/to/file.csv
+```
+
+Rows are upserted by `id`. `python manage.py seed` adds sample jobs.
 
 
 <img width="1810" height="934" alt="Screenshot From 2026-09-07 19-59-47" src="https://github.com/user-attachments/assets/60af1fde-57b1-4df7-a529-ee4de0fc3354" />

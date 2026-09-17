@@ -1,23 +1,38 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import KanbanBoard, { COLUMNS } from './components/KanbanBoard'
 import AddJobModal from './components/AddJobModal'
 import CompanyFilter from './components/CompanyFilter'
 import LoginPage from './components/LoginPage'
+import {
+  useAuthStatus, useLogout, useUnauthorized,
+  useJobs, useCreateJob, useUpdateJob, useDeleteJob,
+} from './api'
 import styles from './App.module.css'
 
-const API = '/api/jobs'
-
 export default function App() {
-  // status: 'checking' | 'setup' | 'login' | 'authenticated'
-  const [auth, setAuth] = useState({ status: 'checking', username: null })
-  const [jobs, setJobs] = useState([])
-  const [loading, setLoading] = useState(true)
+  const authStatus = useAuthStatus()
+  // Set once the user logs in or out in this tab; until then the server's status decides
+  const [session, setSession] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [editingJob, setEditingJob] = useState(null)
   const [companyFilters, setCompanyFilters] = useState([])
   const [collapsedCols, setCollapsedCols] = useState(
     () => Object.fromEntries(COLUMNS.map(c => [c.id, true]))
   )
+
+  // status: 'checking' | 'setup' | 'login' | 'authenticated'
+  const auth = session ?? (
+    authStatus.loading ? { status: 'checking', username: null }
+      : authStatus.data?.authenticated ? { status: 'authenticated', username: authStatus.data.username }
+      : authStatus.data?.setup_required ? { status: 'setup', username: null }
+      : { status: 'login', username: null }
+  )
+
+  const { jobs, setJobs, loading } = useJobs(auth.status === 'authenticated')
+  const { logout } = useLogout()
+  const { createJob } = useCreateJob()
+  const { updateJob } = useUpdateJob()
+  const { deleteJob } = useDeleteJob()
 
   const companies = useMemo(
     () => [...new Set(jobs.map(j => j.company).filter(Boolean))].sort(),
@@ -28,93 +43,49 @@ export default function App() {
     ? jobs
     : jobs.filter(j => companyFilters.includes(j.company))
 
-  const checkAuth = () =>
-    fetch('/api/auth/status')
-      .then(r => r.json())
-      .then(data => setAuth({
-        status: data.authenticated ? 'authenticated' : data.setup_required ? 'setup' : 'login',
-        username: data.username,
-      }))
-      .catch(() => setAuth({ status: 'login', username: null }))
-
-  useEffect(() => {
-    checkAuth()
-  }, [])
-
-  const resetBoard = () => {
-    setJobs([])
+  const signOut = () => {
     setShowModal(false)
     setEditingJob(null)
     setCompanyFilters([])
-    setLoading(true)
+    setSession({ status: 'login', username: null })
   }
 
-  const apiFetch = async (url, options) => {
-    const res = await fetch(url, options)
-    if (res.status === 401) {
-      resetBoard()
-      setAuth({ status: 'login', username: null })
-      throw new Error('Session expired')
-    }
-    return res
-  }
+  useUnauthorized(signOut)
 
-  useEffect(() => {
-    if (auth.status !== 'authenticated') return
-    apiFetch(API)
-      .then(r => r.json())
-      .then(data => setJobs(data))
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [auth.status])
-
-  const logout = async () => {
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    }).catch(() => {})
-    resetBoard()
-    setAuth({ status: 'login', username: null })
+  const handleLogout = async () => {
+    await logout().catch(() => {})
+    signOut()
   }
 
   const addJob = async (formData) => {
-    const res = await apiFetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    })
-    if (!res.ok) throw new Error('Failed to add job')
-    const job = await res.json()
+    const job = await createJob(formData)
     setJobs(prev => [job, ...prev])
     setCollapsedCols(prev => ({ ...prev, to_be_applied: false }))
     setShowModal(false)
   }
 
   const moveJob = async (jobId, newStatus) => {
-    const res = await apiFetch(`${API}/${jobId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus }),
-    })
-    const updated = await res.json()
-    setJobs(prev => prev.map(j => (j.id === jobId ? updated : j)))
+    try {
+      const updated = await updateJob(jobId, { status: newStatus })
+      setJobs(prev => prev.map(j => (j.id === jobId ? updated : j)))
+    } catch {
+      // expired sessions are handled by useUnauthorized
+    }
   }
 
-  const updateJob = async (jobId, formData) => {
-    const res = await apiFetch(`${API}/${jobId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    })
-    if (!res.ok) throw new Error('Failed to update job')
-    const updated = await res.json()
+  const saveJob = async (jobId, formData) => {
+    const updated = await updateJob(jobId, formData)
     setJobs(prev => prev.map(j => (j.id === jobId ? updated : j)))
     setEditingJob(null)
   }
 
-  const deleteJob = async (jobId) => {
-    await apiFetch(`${API}/${jobId}`, { method: 'DELETE' })
-    setJobs(prev => prev.filter(j => j.id !== jobId))
+  const removeJob = async (jobId) => {
+    try {
+      await deleteJob(jobId)
+      setJobs(prev => prev.filter(j => j.id !== jobId))
+    } catch {
+      // expired sessions are handled by useUnauthorized
+    }
   }
 
   if (auth.status === 'checking') {
@@ -132,7 +103,7 @@ export default function App() {
       <LoginPage
         key={auth.status}
         setupRequired={auth.status === 'setup'}
-        onAuthenticated={username => setAuth({ status: 'authenticated', username })}
+        onAuthenticated={username => setSession({ status: 'authenticated', username })}
       />
     )
   }
@@ -160,7 +131,7 @@ export default function App() {
             </button>
             <span className={styles.divider} />
             <span className={styles.username} title={auth.username}>{auth.username}</span>
-            <button className={styles.logoutBtn} onClick={logout} title="Log out" aria-label="Log out">
+            <button className={styles.logoutBtn} onClick={handleLogout} title="Log out" aria-label="Log out">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                 <polyline points="16 17 21 12 16 7" />
@@ -188,7 +159,7 @@ export default function App() {
             <KanbanBoard
               jobs={visibleJobs}
               onMove={moveJob}
-              onDelete={deleteJob}
+              onDelete={removeJob}
               onEdit={setEditingJob}
               forceExpanded={companyFilters.length > 0}
               collapsedCols={collapsedCols}
@@ -205,7 +176,7 @@ export default function App() {
         <AddJobModal
           job={editingJob}
           onClose={() => setEditingJob(null)}
-          onSave={updateJob}
+          onSave={saveJob}
         />
       )}
     </div>

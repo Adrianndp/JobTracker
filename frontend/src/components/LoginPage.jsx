@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ApiError, useLogin, useSignup } from '../api'
 import styles from './LoginPage.module.css'
 
 const MIN_PASSWORD_LENGTH = 8
@@ -11,6 +12,8 @@ export default function LoginPage({ setupRequired, onAuthenticated }) {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const { login } = useLogin()
+  const { signup } = useSignup()
 
   const isRegister = mode === 'register'
   const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
@@ -47,26 +50,18 @@ export default function LoginPage({ setupRequired, onAuthenticated }) {
     setError('')
     setLoading(true)
     try {
-      const res = await fetch(isRegister ? '/api/auth/signup' : '/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          isRegister
-            ? { username: username.trim(), email: email.trim(), password }
-            : { username: username.trim(), password }
-        ),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setError(data.error || 'Something went wrong. Please try again.')
+      const data = isRegister
+        ? await signup({ username: username.trim(), email: email.trim(), password })
+        : await login({ username: username.trim(), password })
+      onAuthenticated(data.username)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message)
         setPassword('')
         setConfirm('')
-        setLoading(false)
-        return
+      } else {
+        setError('Could not reach the server. Please try again.')
       }
-      onAuthenticated(data.username)
-    } catch {
-      setError('Could not reach the server. Please try again.')
       setLoading(false)
     }
   }

@@ -3,7 +3,7 @@ services:
     build: ./backend
     container_name: jobtracker-backend
     environment:
-      FLASK_ENV: production
+      DJANGO_ENV: production
       SECRET_KEY: ${SECRET_KEY:-}                        # empty → generated once into backend/instance/secret_key
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-0} # set to 1 when served over HTTPS
     volumes:
