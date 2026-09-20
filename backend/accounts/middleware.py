@@ -2,16 +2,36 @@ from django.http import JsonResponse
 
 from .auth import current_user
 
-PUBLIC_API_PATHS = {'/api/health', '/api/auth/status', '/api/auth/signup', '/api/auth/login', '/api/auth/logout'}
+# Reachable without being signed in. Note that logout is NOT here any more: as a
+# public endpoint it let any site sign the user out.
+PUBLIC_API_PATHS = {
+    '/api/health',
+    '/api/auth/status',
+    '/api/auth/signup',
+    '/api/auth/login',
+    '/api/auth/token',
+}
 
 
 def api_guard(get_response):
     def middleware(request):
         if request.path.startswith('/api/'):
-            # Only JSON bodies are accepted, so cross-site HTML forms can't hit the API
+            # Defence in depth against HTML form posts, which cannot set this
+            # content type. This was never the CSRF defence -- CsrfViewMiddleware
+            # is, and unlike this check it also covers DELETE.
             if request.method in ('POST', 'PATCH', 'PUT') and request.content_type != 'application/json':
                 return JsonResponse({'error': 'Content-Type must be application/json'}, status=415)
-            if request.path not in PUBLIC_API_PATHS and current_user(request) is None:
+
+            user = current_user(request)
+
+            # A bearer token is sent deliberately by a client that had to read it
+            # from storage first, so it carries no ambient authority and CSRF
+            # cannot apply. Set before CsrfViewMiddleware.process_view runs,
+            # which is after every middleware request phase.
+            if request.auth_scheme == 'bearer':
+                request._dont_enforce_csrf_checks = True
+
+            if request.path not in PUBLIC_API_PATHS and user is None:
                 return JsonResponse({'error': 'Authentication required'}, status=401)
         return get_response(request)
 

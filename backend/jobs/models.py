@@ -6,6 +6,9 @@ VALID_STATUSES = ['to_be_applied', 'applied', 'in_interview', 'rejected', 'offer
 
 
 class Job(models.Model):
+    user = models.ForeignKey(
+        'accounts.User', on_delete=models.CASCADE, related_name='jobs', db_column='user_id'
+    )
     name = models.CharField(max_length=200)
     company = models.CharField(max_length=200, null=True)
     link = models.CharField(max_length=500, null=True)

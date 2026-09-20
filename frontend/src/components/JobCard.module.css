@@ -109,6 +109,15 @@
   transition: opacity 0.15s;
 }
 
+.linkPlain {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  font-weight: 500;
+  opacity: 0.7;
+}
+
 .link:hover {
   opacity: 1;
   text-decoration: underline;

@@ -2,8 +2,8 @@
 Importiert Zeilen aus job.csv in die bestehende jobs.db.
 
 Nutzung (im backend-Ordner, venv aktiv):
-    python manage.py import_jobs            # liest job.csv
-    python manage.py import_jobs pfad.csv
+    python manage.py import_jobs --username Adrian            # liest job.csv
+    python manage.py import_jobs pfad.csv --username Adrian
 
 Bereits vorhandene IDs werden aktualisiert (Upsert), neue IDs werden angelegt.
 """
@@ -11,10 +11,10 @@ Bereits vorhandene IDs werden aktualisiert (Upsert), neue IDs werden angelegt.
 import csv
 from datetime import datetime
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from accounts.models import utcnow
+from accounts.models import User, utcnow
 from jobs.models import VALID_STATUSES, Job
 
 
@@ -35,9 +35,13 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('csv_path', nargs='?', default='job.csv')
+        parser.add_argument('--username', required=True, help='Account the imported jobs belong to.')
 
     @transaction.atomic
-    def handle(self, *args, csv_path, **options):
+    def handle(self, *args, csv_path, username, **options):
+        owner = User.objects.filter(username=username).first()
+        if owner is None:
+            raise CommandError(f'No account named "{username}".')
         created, updated = 0, 0
 
         with open(csv_path, newline='', encoding='utf-8') as f:
@@ -49,6 +53,7 @@ class Command(BaseCommand):
                 _, was_created = Job.objects.update_or_create(
                     id=int(row['id']),
                     defaults={
+                        'user': owner,
                         'name': (row.get('name') or '').strip(),
                         'company': (row.get('company') or '').strip() or None,
                         'link': (row.get('link') or '').strip() or None,

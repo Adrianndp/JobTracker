@@ -1,8 +1,10 @@
 from getpass import getpass
 
+from django.contrib.auth import password_validation
+from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 
-from accounts.models import MIN_PASSWORD_LENGTH, User
+from accounts.models import User
 
 
 class Command(BaseCommand):
@@ -19,8 +21,12 @@ class Command(BaseCommand):
         password = getpass('Password: ')
         if getpass('Repeat for confirmation: ') != password:
             raise CommandError('The two entered values do not match.')
-        if len(password) < MIN_PASSWORD_LENGTH:
-            raise CommandError(f'Password must be at least {MIN_PASSWORD_LENGTH} characters.')
+        try:
+            password_validation.validate_password(password, user)
+        except ValidationError as exc:
+            raise CommandError(' '.join(exc.messages))
         user.set_password(password)
         user.save(update_fields=['password_hash'])
-        self.stdout.write(f'Password updated for "{username}". Existing sessions are signed out.')
+        self.stdout.write(
+            f'Password updated for "{username}". Existing sessions and API tokens are signed out.'
+        )

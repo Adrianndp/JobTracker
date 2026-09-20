@@ -1,11 +1,18 @@
 import { useState } from 'react'
-import { ApiError, useLogin, useSignup } from '../api'
+import { ApiError, useLogin, useSignup, useTokenLogin } from '../api'
 import styles from './LoginPage.module.css'
 
-const MIN_PASSWORD_LENGTH = 8
+const MIN_PASSWORD_LENGTH = 10
 
-export default function LoginPage({ setupRequired, onAuthenticated }) {
-  const [mode, setMode] = useState(setupRequired ? 'register' : 'login')
+/**
+ * authMode 'session' (default) signs in with a cookie session, as the web app
+ * always has. 'token' is the extension: it exchanges the same credentials for a
+ * bearer token, because a cross-origin extension page never receives the cookie.
+ * onAuthenticated(username, grant) -- grant is only present in token mode.
+ */
+export default function LoginPage({ setupRequired, onAuthenticated, authMode = 'session' }) {
+  const isTokenMode = authMode === 'token'
+  const [mode, setMode] = useState(setupRequired && !isTokenMode ? 'register' : 'login')
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -14,8 +21,11 @@ export default function LoginPage({ setupRequired, onAuthenticated }) {
   const [loading, setLoading] = useState(false)
   const { login } = useLogin()
   const { signup } = useSignup()
+  const { tokenLogin } = useTokenLogin()
 
-  const isRegister = mode === 'register'
+  // Creating the account is a web-app job: it needs a session, and the extension
+  // is pointed at a backend that already has one.
+  const isRegister = mode === 'register' && !isTokenMode
   const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
   const switchMode = (next) => {
@@ -50,10 +60,15 @@ export default function LoginPage({ setupRequired, onAuthenticated }) {
     setError('')
     setLoading(true)
     try {
-      const data = isRegister
-        ? await signup({ username: username.trim(), email: email.trim(), password })
-        : await login({ username: username.trim(), password })
-      onAuthenticated(data.username)
+      let data
+      if (isRegister) {
+        data = await signup({ username: username.trim(), email: email.trim(), password })
+      } else if (isTokenMode) {
+        data = await tokenLogin({ username: username.trim(), password, device_name: 'Chrome extension' })
+      } else {
+        data = await login({ username: username.trim(), password })
+      }
+      onAuthenticated(data.username, data)
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message)
@@ -83,7 +98,9 @@ export default function LoginPage({ setupRequired, onAuthenticated }) {
         <p className={styles.subtitle}>
           {isRegister
             ? 'This is the only account for this tracker. Sign-up closes once it is created.'
-            : 'Welcome back. Log in to see your board.'}
+            : isTokenMode
+              ? 'Sign in to connect this browser to your tracker.'
+              : 'Welcome back. Log in to see your board.'}
         </p>
 
         <form onSubmit={handleSubmit} className={styles.form} noValidate>
@@ -150,7 +167,7 @@ export default function LoginPage({ setupRequired, onAuthenticated }) {
               : (loading ? 'Logging in...' : 'Login')}
           </button>
 
-          {!setupRequired && (
+          {!setupRequired && !isTokenMode && (
             <p className={styles.altAction}>
               {isRegister ? (
                 <>Already have an account?{' '}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { getTransport } from './lib/transport'
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -59,11 +60,35 @@ interface RequestOptions {
   notifyUnauthorized?: boolean
 }
 
+/** Django's CSRF cookie. Not HttpOnly, precisely so this can read it. */
+function csrfToken(): string | null {
+  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 async function request<T>(url: string, { method = 'GET', body, notifyUnauthorized = true }: RequestOptions = {}): Promise<T> {
-  const res = await fetch(url, {
+  const transport = getTransport()
+  const headers: Record<string, string> = {}
+
+  // The backend only accepts JSON for POST/PATCH, even without a body
+  if (method === 'POST' || method === 'PATCH') {
+    headers['Content-Type'] = 'application/json'
+  }
+
+  const token = transport.getToken ? await transport.getToken() : null
+  if (token) {
+    // A bearer token carries no ambient authority, so CSRF doesn't apply and
+    // the backend exempts it.
+    headers.Authorization = `Bearer ${token}`
+  } else if (method !== 'GET') {
+    const csrf = csrfToken()
+    if (csrf) headers['X-CSRFToken'] = csrf
+  }
+
+  const res = await fetch(transport.baseUrl + url, {
     method,
-    // The backend only accepts JSON for POST/PATCH, even without a body
-    headers: method === 'POST' || method === 'PATCH' ? { 'Content-Type': 'application/json' } : undefined,
+    headers,
+    credentials: transport.credentials,
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   if (res.status === 401 && notifyUnauthorized) {
@@ -136,6 +161,16 @@ const signup = (data: SignupData) =>
 const logout = () =>
   request<null>('/api/auth/logout', { method: 'POST', notifyUnauthorized: false })
 
+export interface TokenGrant {
+  token: string
+  expires_at: string
+  username: string
+}
+
+/** Extension sign-in: exchanges credentials for a bearer token. */
+const tokenLogin = (data: Credentials & { device_name?: string }) =>
+  request<TokenGrant>('/api/auth/token', { method: 'POST', body: data, notifyUnauthorized: false })
+
 export function useLogin() {
   const { run, ...state } = useRequest(login)
   return { login: run, ...state }
@@ -144,6 +179,11 @@ export function useLogin() {
 export function useSignup() {
   const { run, ...state } = useRequest(signup)
   return { signup: run, ...state }
+}
+
+export function useTokenLogin() {
+  const { run, ...state } = useRequest(tokenLogin)
+  return { tokenLogin: run, ...state }
 }
 
 export function useLogout() {

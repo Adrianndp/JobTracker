@@ -7,4 +7,7 @@ urlpatterns = [
     path('signup', views.SignupView.as_view()),
     path('login', views.LoginView.as_view()),
     path('logout', views.LogoutView.as_view()),
+    path('token', views.TokenView.as_view()),
+    path('tokens', views.TokenListView.as_view()),
+    path('tokens/<int:token_id>', views.TokenDetailView.as_view()),
 ]

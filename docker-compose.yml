@@ -3,9 +3,13 @@ services:
     build: ./backend
     container_name: jobtracker-backend
     environment:
-      DJANGO_ENV: production
       SECRET_KEY: ${SECRET_KEY:-}                        # empty → generated once into backend/instance/secret_key
-      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-0} # set to 1 when served over HTTPS
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      HTTPS: ${HTTPS:-0}                                 # 1 enables SSL redirect, HSTS and secure cookies
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-0} # legacy alias for HTTPS, still honoured
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}    # e.g. chrome-extension://<id>
+      TRUSTED_PROXY_COUNT: 1                             # nginx below is the one proxy in front
     volumes:
       - ./backend/instance:/app/instance   # existing jobs.db lives here
     ports:

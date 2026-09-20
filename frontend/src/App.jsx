@@ -9,7 +9,12 @@ import {
 } from './api'
 import styles from './App.module.css'
 
-export default function App() {
+/**
+ * authMode is passed straight to LoginPage: 'session' for the web app, 'token'
+ * for the extension. onSignIn/onSignOut let the extension persist and clear the
+ * bearer token; the web app needs neither.
+ */
+export default function App({ authMode = 'session', onSignIn, onSignOut }) {
   const authStatus = useAuthStatus()
   // Set once the user logs in or out in this tab; until then the server's status decides
   const [session, setSession] = useState(null)
@@ -48,6 +53,7 @@ export default function App() {
     setEditingJob(null)
     setCompanyFilters([])
     setSession({ status: 'login', username: null })
+    onSignOut?.()
   }
 
   useUnauthorized(signOut)
@@ -109,7 +115,11 @@ export default function App() {
       <LoginPage
         key={auth.status}
         setupRequired={auth.status === 'setup'}
-        onAuthenticated={username => setSession({ status: 'authenticated', username })}
+        authMode={authMode}
+        onAuthenticated={(username, grant) => {
+          onSignIn?.(username, grant)
+          setSession({ status: 'authenticated', username })
+        }}
       />
     )
   }

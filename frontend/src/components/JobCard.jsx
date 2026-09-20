@@ -1,4 +1,5 @@
 import { Draggable } from '@hello-pangea/dnd'
+import { safeHref } from '../lib/safeUrl'
 import styles from './JobCard.module.css'
 
 const formatDate = (iso) => {
@@ -9,6 +10,8 @@ const formatDate = (iso) => {
 }
 
 export default function JobCard({ job, index, color, onDelete, onEdit }) {
+  // null when job.link isn't an http(s) URL (legacy notes, or anything scraped)
+  const href = safeHref(job.link)
   const handleDelete = (e) => {
     e.stopPropagation()
     if (window.confirm(`Remove "${job.name}"?`)) {
@@ -86,9 +89,12 @@ export default function JobCard({ job, index, color, onDelete, onEdit }) {
 
             {(job.link || job.had_interview) && (
               <div className={styles.footerRow}>
-                {job.link && (
+                {job.link && !href && (
+                  <span className={styles.linkPlain}>{job.link}</span>
+                )}
+                {href && (
                   <a
-                    href={job.link}
+                    href={href}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={styles.link}

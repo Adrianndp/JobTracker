@@ -1,5 +1,6 @@
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
+from accounts.models import User
 from jobs.models import Job
 
 jobs = [
@@ -100,6 +101,12 @@ jobs = [
 class Command(BaseCommand):
     help = 'Add sample jobs to the database.'
 
-    def handle(self, *args, **options):
-        Job.objects.bulk_create(Job(**data) for data in jobs)
-        self.stdout.write(f'Seeded {len(jobs)} jobs successfully.')
+    def add_arguments(self, parser):
+        parser.add_argument('--username', required=True, help='Account the sample jobs belong to.')
+
+    def handle(self, *args, username, **options):
+        owner = User.objects.filter(username=username).first()
+        if owner is None:
+            raise CommandError(f'No account named "{username}".')
+        Job.objects.bulk_create(Job(user=owner, **data) for data in jobs)
+        self.stdout.write(f'Seeded {len(jobs)} jobs for "{username}".')

@@ -3,9 +3,19 @@ import secrets
 import time
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 INSTANCE_DIR = BASE_DIR / 'instance'
 DIST_DIR = BASE_DIR / 'dist'
+
+
+def env_flag(name):
+    return os.environ.get(name) == '1'
+
+
+def env_list(name):
+    return [v.strip() for v in os.environ.get(name, '').split(',') if v.strip()]
 
 
 def load_secret_key():
@@ -29,8 +39,41 @@ def load_secret_key():
 
 
 SECRET_KEY = load_secret_key()
-DEBUG = os.environ.get('DJANGO_ENV') != 'production'
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+
+# Fail closed: debug is off unless explicitly switched on. manage.py sets this
+# for `runserver` only, so gunicorn (which never goes through manage.py) can't
+# inherit it by accident.
+DEBUG = env_flag('DJANGO_DEBUG')
+
+ALLOWED_HOSTS = env_list('ALLOWED_HOSTS')
+if not ALLOWED_HOSTS:
+    if DEBUG:
+        ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]']
+    else:
+        raise ImproperlyConfigured(
+            'ALLOWED_HOSTS is empty and DEBUG is off. Set ALLOWED_HOSTS to a '
+            'comma-separated list of the hostnames this site is served on.'
+        )
+
+# How many proxies sit in front of us. 0 means X-Forwarded-For is untrusted and
+# must never be read -- doing so unconditionally is the standard spoof bypass.
+TRUSTED_PROXY_COUNT = int(os.environ.get('TRUSTED_PROXY_COUNT', '0'))
+
+# HTTPS=1 turns on every transport-security setting at once. SESSION_COOKIE_SECURE
+# is still honoured on its own so an existing docker-compose.yml doesn't regress.
+HTTPS = env_flag('HTTPS')
+SECURE_SSL_REDIRECT = HTTPS
+SECURE_HSTS_SECONDS = 31536000 if HTTPS else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = HTTPS
+SECURE_HSTS_PRELOAD = HTTPS
+if TRUSTED_PROXY_COUNT > 0:
+    # nginx.conf already sets X-Forwarded-Proto
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
+X_FRAME_OPTIONS = 'DENY'
 
 INSTALLED_APPS = [
     'accounts',
@@ -38,10 +81,16 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Must be first: a preflight has to answer before SECURE_SSL_REDIRECT can
+    # 301 it, and it must wrap api_guard, which would 401 a preflight because
+    # preflights carry no Authorization header.
+    'config.cors.cors_middleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
     'accounts.middleware.api_guard',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'config.security.security_headers',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -56,6 +105,13 @@ DATABASES = {
 }
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'django_cache',
+    }
+}
+
 # Timestamps are stored as naive UTC, like the Flask version did
 USE_TZ = False
 TIME_ZONE = 'UTC'
@@ -65,8 +121,32 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
 SESSION_COOKIE_AGE = 30 * 24 * 60 * 60
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE') == '1'
+SESSION_COOKIE_SECURE = HTTPS or env_flag('SESSION_COOKIE_SECURE')
+
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_HTTPONLY = False  # the SPA reads it to set X-CSRFToken
+CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
+CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
+
+# Origins allowed to make cross-origin API calls, e.g. chrome-extension://<id>.
+CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS')
+
+# The API only ever takes small JSON documents, and a content script will be
+# posting text scraped from arbitrary pages.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024
 
 PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+]
+
+# These work without django.contrib.auth in INSTALLED_APPS: validate_password
+# only getattr()s username/email off whatever user object it is handed.
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 10},
+    },
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
 ]

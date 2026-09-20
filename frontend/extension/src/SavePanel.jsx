@@ -1,0 +1,241 @@
+import { useCallback, useEffect, useState } from 'react'
+import { useAuthStatus, useJobs, useUnauthorized } from '@app/api'
+import { safeHref } from '@app/lib/safeUrl'
+import LoginPage from '@app/components/LoginPage'
+import { defaultApiBase, ensureHostPermission, getApiBase, setApiBase } from './settings'
+import { clearToken, getCachedToken, setToken } from './tokenStore'
+import styles from './SavePanel.module.css'
+
+const PENDING_KEY = 'pendingJob'
+const EMPTY = { name: '', company: '', salary: '', link: '' }
+
+function SettingsRow({ onChanged }) {
+  const [open, setOpen] = useState(false)
+  const [value, setValue] = useState('')
+  const [error, setError] = useState('')
+
+  useEffect(() => { getApiBase().then(setValue) }, [])
+
+  const save = async () => {
+    setError('')
+    try {
+      const base = await setApiBase(value)
+      if (!(await ensureHostPermission(base))) {
+        setError('Permission for that host was declined.')
+        return
+      }
+      onChanged(base)
+      setOpen(false)
+    } catch {
+      setError('Enter a full URL, e.g. https://jobs.example.com')
+    }
+  }
+
+  if (!open) {
+    return (
+      <button type="button" className={styles.settingsToggle} onClick={() => setOpen(true)}>
+        Backend: {value || defaultApiBase}
+      </button>
+    )
+  }
+
+  return (
+    <div className={styles.settings}>
+      <label className={styles.label} htmlFor="apiBase">API host</label>
+      <input
+        id="apiBase"
+        className={styles.input}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={defaultApiBase}
+      />
+      {error && <p className={styles.error} role="alert">{error}</p>}
+      <div className={styles.row}>
+        <button type="button" className={styles.secondaryBtn} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="button" className={styles.primaryBtn} onClick={save}>Save</button>
+      </div>
+    </div>
+  )
+}
+
+function SaveForm({ onSaved }) {
+  const [form, setForm] = useState(EMPTY)
+  const [note, setNote] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+
+  const adopt = useCallback((job, reason) => {
+    setForm({ ...EMPTY, ...job })
+    setNote(reason && reason !== 'review' ? reason : '')
+  }, [])
+
+  // A save started from the context menu parks the draft in storage and opens
+  // this panel; pick it up on mount and whenever a new one lands.
+  useEffect(() => {
+    let cancelled = false
+    chrome.storage.local.get(PENDING_KEY).then(({ [PENDING_KEY]: pending }) => {
+      if (!cancelled && pending?.job) {
+        adopt(pending.job, pending.reason)
+        chrome.storage.local.remove(PENDING_KEY)
+      }
+    })
+    const listener = (changes, area) => {
+      if (area === 'local' && changes[PENDING_KEY]?.newValue?.job) {
+        adopt(changes[PENDING_KEY].newValue.job, changes[PENDING_KEY].newValue.reason)
+        chrome.storage.local.remove(PENDING_KEY)
+      }
+    }
+    chrome.storage.onChanged.addListener(listener)
+    return () => { cancelled = true; chrome.storage.onChanged.removeListener(listener) }
+  }, [adopt])
+
+  const useCurrentTab = async () => {
+    setError('')
+    setBusy(true)
+    try {
+      const res = await chrome.runtime.sendMessage({ type: 'read-active-tab' })
+      if (res?.ok) adopt(res.job, 'review')
+      else setError(res?.error || 'Could not read the current tab.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const submit = async (e) => {
+    e.preventDefault()
+    if (!form.name.trim()) return setError('Job title is required.')
+    if (!form.company.trim()) return setError('Company is required.')
+    setError('')
+    setBusy(true)
+    try {
+      const res = await chrome.runtime.sendMessage({ type: 'save-job', job: form })
+      if (res?.ok) {
+        setForm(EMPTY)
+        setNote('')
+        onSaved(res.job)
+      } else {
+        setError(res?.error || 'Could not save.')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const href = safeHref(form.link)
+
+  return (
+    <form className={styles.form} onSubmit={submit}>
+      <div className={styles.row}>
+        <button type="button" className={styles.secondaryBtn} onClick={useCurrentTab} disabled={busy}>
+          Use current tab
+        </button>
+        <button
+          type="button"
+          className={styles.secondaryBtn}
+          onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('board.html') })}
+        >
+          Open full board
+        </button>
+      </div>
+
+      {note && <p className={styles.note}>{note}</p>}
+
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="name">Job title</label>
+        <input id="name" className={styles.input} value={form.name} onChange={set('name')} />
+      </div>
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="company">Company</label>
+        <input id="company" className={styles.input} value={form.company} onChange={set('company')} />
+      </div>
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="salary">Salary</label>
+        <input id="salary" className={styles.input} value={form.salary} onChange={set('salary')} />
+      </div>
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="link">Link</label>
+        <input id="link" className={styles.input} value={form.link} onChange={set('link')} />
+        {href && <a className={styles.preview} href={href} target="_blank" rel="noopener noreferrer">Open posting</a>}
+      </div>
+
+      {error && <p className={styles.error} role="alert">{error}</p>}
+
+      <button type="submit" className={styles.primaryBtn} disabled={busy}>
+        {busy ? 'Saving...' : 'Save to To Be Applied'}
+      </button>
+    </form>
+  )
+}
+
+function RecentSaves({ refreshKey }) {
+  const { jobs, setJobs } = useJobs(true)
+
+  useEffect(() => {
+    const listener = (message) => {
+      if (message?.type === 'job-created') setJobs((prev) => [message.job, ...prev])
+    }
+    chrome.runtime.onMessage.addListener(listener)
+    return () => chrome.runtime.onMessage.removeListener(listener)
+  }, [setJobs])
+
+  const recent = jobs.slice(0, 5)
+  if (!recent.length) return null
+
+  return (
+    <div className={styles.recent} key={refreshKey}>
+      <h2 className={styles.recentTitle}>Recently saved</h2>
+      <ul className={styles.recentList}>
+        {recent.map((job) => (
+          <li key={job.id} className={styles.recentItem}>
+            <span className={styles.recentName}>{job.name}</span>
+            <span className={styles.recentCompany}>{job.company}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+export default function SavePanel({ onApiBaseChanged }) {
+  const authStatus = useAuthStatus()
+  const [session, setSession] = useState(() => (getCachedToken() ? undefined : 'login'))
+  const [saved, setSaved] = useState(0)
+
+  useUnauthorized(() => {
+    clearToken()
+    setSession('login')
+  })
+
+  const authed = session === 'authed'
+    || (session === undefined && authStatus.data?.authenticated)
+
+  if (session !== 'login' && authStatus.loading) {
+    return <div className={styles.panel}><p className={styles.note}>Connecting...</p></div>
+  }
+
+  if (!authed) {
+    return (
+      <div className={styles.panel}>
+        <LoginPage
+          authMode="token"
+          setupRequired={false}
+          onAuthenticated={async (_username, grant) => {
+            if (grant?.token) await setToken(grant.token)
+            setSession('authed')
+          }}
+        />
+        <SettingsRow onChanged={onApiBaseChanged} />
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.panel}>
+      <SaveForm onSaved={() => setSaved((n) => n + 1)} />
+      <RecentSaves refreshKey={saved} />
+      <SettingsRow onChanged={onApiBaseChanged} />
+    </div>
+  )
+}

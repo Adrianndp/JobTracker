@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Job Tracker",
+  "description": "Save a job posting to your tracker in one click, and see your board.",
+  "version": "0.1.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwGpd/ydzXBpWqngXFGFuXpO829DWgbGWnWcYxY/BEAlQH8oi7cdLESp5EccVJiQyRVrN+e4uy2TuwB8ycdQ2cG4DPMi1RUj0Og7xnPqwjVGKul1Jc3YEWYopZSt4zd/IhOHWl7fCILxkEj48dVLBnqGDkT0pBe+mVDgcYQLOy3U22DcAk9DQmxP4hSrXk6oiPkAYlU3jAtg+snLF0gjtmKt0A5k3wgkjXruTXJjVfYrk1BkznMd5aj7wXxUJuVJ+mjoElRNrGukL8VD12RAhFvWuvRsjwRKymeFjMYRPQhrvwjekfkoq7ScVezompNQuLl+2XbBNiSwVtf//kPL6lwIDAQAB",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "storage",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "http://localhost:5001/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Job Tracker"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  }
+}
