@@ -160,6 +160,13 @@
   margin-bottom: 1.5rem;
 }
 
+.filterActions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
 @media (max-width: 639px) {
   .filterRow {
     flex-wrap: wrap;

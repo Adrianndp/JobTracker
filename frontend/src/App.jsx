@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import KanbanBoard, { COLUMNS } from './components/KanbanBoard'
 import AddJobModal from './components/AddJobModal'
 import CompanyFilter from './components/CompanyFilter'
+import ExportMenu from './components/ExportMenu'
 import LoginPage from './components/LoginPage'
 import {
   useAuthStatus, useLogout, useUnauthorized,
@@ -169,13 +170,16 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
                 filters={companyFilters}
                 onFiltersChange={setCompanyFilters}
               />
-              <button className={styles.addBtn} onClick={() => setShowModal(true)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Add Job
-              </button>
+              <div className={styles.filterActions}>
+                <ExportMenu jobs={visibleJobs} boardTitle={`${auth.username}'s Job Board`} />
+                <button className={styles.addBtn} onClick={() => setShowModal(true)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Add Job
+                </button>
+              </div>
             </div>
             <KanbanBoard
               jobs={visibleJobs}
