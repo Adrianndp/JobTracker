@@ -174,15 +174,21 @@ export function jobsReportHtml(jobs: ExportJob[], columns: ExportColumn[], board
   .count {
     margin-left: auto; color: #64748b; font-size: 9pt; font-weight: 600;
   }
-  table { width: 100%; border-collapse: collapse; }
+  /* Fixed widths so every section's columns line up down the page */
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th:nth-child(1), td:nth-child(1) { width: 30%; }
+  th:nth-child(2), td:nth-child(2) { width: 18%; }
+  th:nth-child(3), td:nth-child(3) { width: 14%; }
+  th:nth-child(4), td:nth-child(4) { width: 12%; }
+  th:nth-child(5), td:nth-child(5) { width: 26%; }
   th {
     text-align: left; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px;
     color: #64748b; padding: 4px 8px 4px 0; border-bottom: 1px solid #e2e8f0;
   }
   td { padding: 5px 8px 5px 0; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
   tr { page-break-inside: avoid; }
-  .role { font-weight: 600; }
-  .link { color: #475569; font-size: 8pt; word-break: break-all; max-width: 30%; }
+  .role { font-weight: 600; word-break: break-word; }
+  .link { color: #475569; font-size: 8pt; word-break: break-all; }
   footer { margin-top: 20px; color: #94a3b8; font-size: 8pt; text-align: center; }
   .empty { color: #64748b; font-style: italic; }
 </style>
