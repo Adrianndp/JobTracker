@@ -33,7 +33,7 @@ backend/
     models.py       Job (owned by a User) + valid statuses
     validators.py   link scheme + length validation
     views.py        /api/jobs CRUD, scoped to the signed-in user
-    management/commands/import_jobs.py, seed.py
+    management/commands/seed.py
   config/
     cors.py         CORS allowlist for the extension origin
     security.py     CSP and friends for the HTML Django serves
@@ -126,16 +126,8 @@ npm install
 npm run dev
 ```
 
-## Import from CSV
-
-In `backend/` with the venv activated, put your `job.csv` there (e.g. exported from DB Browser for SQLite) and run:
-
-```bash
-python manage.py import_jobs --username Adrian   # or: ... path/to/file.csv --username Adrian
-```
-
-Rows are upserted by `id`. `python manage.py seed --username Adrian` adds sample
-jobs. Both need `--username` because every job belongs to an account.
+`python manage.py seed --username Adrian` adds sample jobs (needs `--username`
+because every job belongs to an account).
 
 ## Chrome extension
 
