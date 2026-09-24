@@ -112,7 +112,7 @@ class LinkValidationTests(JobApiTestCase):
 
 class LengthCapTests(JobApiTestCase):
     def test_oversized_text_is_truncated_not_stored_whole(self):
-        """SQLite doesn't enforce VARCHAR(n) and create() doesn't check it."""
+        """create() doesn't check max_length; Postgres would raise instead."""
         r = self.as_alice('post', '/api/jobs', {'name': 'x' * 5000, 'company': 'y' * 5000})
         self.assertEqual(r.status_code, 201)
         job = Job.objects.get(pk=r.json()['id'])

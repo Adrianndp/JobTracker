@@ -4,7 +4,6 @@ backend/venv/
 __pycache__/
 *.pyc
 backend/instance/
-backend/jobs.db
 
 # Node
 frontend/node_modules/
@@ -19,3 +18,4 @@ ext-key.pem
 
 # OS
 .DS_Store
+.env

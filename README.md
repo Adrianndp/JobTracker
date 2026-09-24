@@ -8,7 +8,7 @@ extension that saves a posting from a job page in one click.
 - Drag cards between columns
 - Add jobs via modal (title required, URL and salary optional)
 - Delete cards with confirmation
-- SQLite database via the Django ORM
+- PostgreSQL database via the Django ORM
 - Chrome extension: save the page you are on to your board, and view the full
   board in a tab
 
@@ -19,7 +19,7 @@ extension that saves a posting from a job page in one click.
 ```
 backend/
   manage.py         Django entry point (`runserver` defaults to port 5001)
-  config/           settings (secret key, sessions, SQLite), URL routes, health check, serves the built frontend
+  config/           settings (secret key, sessions, database), URL routes, health check, serves the built frontend
   accounts/
     models.py       User account (password hashing, session versioning)
     middleware.py   API guard: JSON-only writes, login required
@@ -87,16 +87,24 @@ The tracker has a single account and requires signing in.
 | `CORS_ALLOWED_ORIGINS` | empty | Comma-separated, e.g. `chrome-extension://<id>`. Needed for the extension. |
 | `CSRF_TRUSTED_ORIGINS` | empty | Passed to Django as-is. |
 | `SECRET_KEY` | generated | Written once to `backend/instance/secret_key`. |
+| `DATABASE_URL` | required | `postgres://user:pass@host:port/db`, optionally `?sslmode=require`. docker-compose sets it for you; outside Docker, load it from `.env`. |
+| `POSTGRES_PASSWORD` | required | docker-compose only: password for the bundled Postgres. Put it in `.env`; use something URL-safe like `openssl rand -hex 24`. |
+| `DB_CONN_MAX_AGE` | `60` | Seconds to keep a Postgres connection open between requests. |
 
 ## Run with Docker
 
 ```bash
+echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> .env   # first time only
 docker compose up --build
 ```
 
 - App: http://localhost:3000
 - Backend API (direct): http://localhost:5001
-- Database: persists on the host at `backend/instance/jobs.db` (bind-mounted, so it survives rebuilds/restarts and is reachable from DB Browser for SQLite or `import_jobs.py`)
+- Database: PostgreSQL 17 in the `db` service, stored in the `pgdata` Docker volume (survives rebuilds; `docker compose down -v` deletes it). Reachable from the host at `localhost:5433` for psql or backups:
+
+  ```bash
+  docker compose exec db pg_dump -U jobtracker jobtracker > backup.sql
+  ```
 
 Stop with:
 
@@ -112,7 +120,9 @@ Backend (Django, port 5001):
 cd backend
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-python manage.py migrate --fake-initial   # creates the tables, or adopts a jobs.db from the old Flask backend
+set -a && . ../.env && set +a            # loads DATABASE_URL (manage.py won't start without it)
+python manage.py migrate                  # creates/updates the tables
+python manage.py createcachetable         # backs the login throttle
 python manage.py runserver
 ```
 
@@ -167,6 +177,9 @@ unpacked** → pick `frontend/dist-extension`.
 ```bash
 cd backend && python manage.py test
 ```
+
+This uses whatever `DATABASE_URL` points at (creating and dropping a `test_` database), so run it with the
+Postgres URL set to test what production runs on.
 
 
 <img width="1810" height="934" alt="Screenshot From 2026-09-07 19-59-47" src="https://github.com/user-attachments/assets/60af1fde-57b1-4df7-a529-ee4de0fc3354" />

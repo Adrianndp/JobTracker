@@ -1,8 +1,8 @@
 """Field validation for job writes.
 
-SQLite does not enforce VARCHAR(n) and Model.objects.create() does not check
-max_length, so without these a scraped page could write an arbitrarily large
-string straight into the table.
+Model.objects.create() does not check max_length, so without these an oversized
+string from a scraped page would reach Postgres, which rejects it with a DataError
+(a 500) instead of a clean 400 or a truncated value.
 """
 
 import re

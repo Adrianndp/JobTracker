@@ -2,6 +2,7 @@ import os
 import secrets
 import time
 from pathlib import Path
+from urllib.parse import parse_qsl, unquote, urlsplit
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -97,12 +98,32 @@ ROOT_URLCONF = 'config.urls'
 WSGI_APPLICATION = 'config.wsgi.application'
 APPEND_SLASH = False
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': INSTANCE_DIR / 'jobs.db',
+def database_from_url(url):
+    """Django DATABASES entry for postgres://user:pass@host:port/name?sslmode=..."""
+    parsed = urlsplit(url)
+    if parsed.scheme not in ('postgres', 'postgresql'):
+        raise ImproperlyConfigured(f'DATABASE_URL must be a postgres:// URL, got {parsed.scheme!r}')
+    return {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': unquote(parsed.path.lstrip('/')),
+        'USER': unquote(parsed.username or ''),
+        'PASSWORD': unquote(parsed.password or ''),
+        'HOST': parsed.hostname or '',
+        'PORT': parsed.port or '',
+        'OPTIONS': dict(parse_qsl(parsed.query)),
+        # Reuse connections across requests instead of reconnecting every time,
+        # and check them first so a Postgres restart doesn't surface as a 500.
+        'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '60')),
+        'CONN_HEALTH_CHECKS': True,
     }
-}
+
+
+if not os.environ.get('DATABASE_URL'):
+    raise ImproperlyConfigured(
+        'DATABASE_URL is not set. Point it at Postgres, e.g. load the repo .env with '
+        '`set -a && . ../.env && set +a` before running manage.py.'
+    )
+DATABASES = {'default': database_from_url(os.environ['DATABASE_URL'])}
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 CACHES = {

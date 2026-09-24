@@ -1,4 +1,22 @@
 services:
+  db:
+    image: postgres:17-alpine
+    container_name: jobtracker-db
+    environment:
+      POSTGRES_DB: jobtracker
+      POSTGRES_USER: jobtracker
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"              # host-only, for psql/backups; 5432 is often taken by a local Postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobtracker -d jobtracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   backend:
     build: ./backend
     container_name: jobtracker-backend
@@ -10,8 +28,9 @@ services:
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}    # e.g. chrome-extension://<id>
       TRUSTED_PROXY_COUNT: 1                             # nginx below is the one proxy in front
+      DATABASE_URL: postgres://jobtracker:${POSTGRES_PASSWORD}@db:5432/jobtracker
     volumes:
-      - ./backend/instance:/app/instance   # existing jobs.db lives here
+      - ./backend/instance:/app/instance   # secret_key
     ports:
       - "127.0.0.1:5001:5001"              # direct API access / debugging (host only)
     healthcheck:
@@ -20,6 +39,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   frontend:
@@ -31,3 +53,6 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  pgdata:

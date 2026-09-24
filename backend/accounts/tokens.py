@@ -12,7 +12,7 @@ from datetime import timedelta
 from .models import ApiToken, utcnow
 
 TOKEN_LIFETIME = timedelta(days=90)
-# Writing last_used_at on every request would mean a SQLite write per API call
+# Writing last_used_at on every request would mean a database write per API call
 LAST_USED_RESOLUTION = timedelta(hours=1)
 
 
