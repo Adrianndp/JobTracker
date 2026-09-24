@@ -179,3 +179,28 @@
   outline-offset: 2px;
   border-radius: 2px;
 }
+
+.labelRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.labelRow .linkBtn {
+  font-size: 0.8rem;
+}
+
+.codeInput {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.15em;
+  font-size: 1rem;
+}
+
+.notice {
+  font-size: 0.8rem;
+  color: #3730a3;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+}

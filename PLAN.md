@@ -1,268 +1,264 @@
-# Job Tracker → Chrome Extension (MV3), with security + data-model fixes first
+# Job Tracker → public multi-user app with subscriptions
 
 ## Context
 
-`JobOffers` is a single-account Django 5.2 + React 18 kanban job tracker: React SPA → same-origin `/api/*` → nginx → gunicorn → SQLite (`backend/instance/jobs.db`, currently 1 user + 76 jobs).
+The app is Django 5.2 + React 18 + Postgres, with a Chrome extension. It was built for **one person**:
 
-The goal is a Chrome extension that saves the job posting you are looking at in one click and shows the kanban board. Three things block that today, and two of them are pre-existing defects worth fixing regardless:
+- `accounts.User` is a hand-rolled model (`password_hash`, `created_at`, its own session keys) and
+  `django.contrib.auth` is **not installed**, so nothing in the Django ecosystem (allauth, admin,
+  `login()`, permissions) can plug into it.
+- Sign-up closes after the first account (`SignupView`, `SIGNUP_CLOSED`); the login throttle and
+  the UI copy ("This is the only account for this tracker") assume one user.
+- No email verification, no self-service password reset (`manage.py reset_password` needs a shell),
+  no MFA, no social login, no account deletion.
+- Sessions are signed cookies, so a session can't be revoked server-side ("sign out everywhere").
 
-1. **Jobs have no owner.** `Job` (`backend/jobs/models.py`) has no FK to `User`, and `JobListView.get` returns every row unfiltered. The app is only "correct" because signup hard-closes after the first account.
-2. **Auth cannot cross origins.** Extension pages are `chrome-extension://<id>`, so the `SameSite=Lax` session cookie is never sent, and there are no CORS headers. Cookie sessions must be joined by a token scheme.
-3. **Security gaps that the extension makes worse.** `DEBUG` defaults *on*; no CSRF middleware at all (so `DELETE /api/jobs/<id>` is fully unprotected — the existing `application/json` check in `accounts/middleware.py:9` only covers POST/PATCH/PUT); the login lockout keys on `REMOTE_ADDR`, which behind nginx is always the proxy, so anyone can lock the only account out; `JobCard.jsx:91` renders `href={job.link}` unvalidated, which becomes click-to-XSS the moment a link arrives from anywhere but the user's own typing.
+Current data: **1 user (`Adrian`, id 1), 76 jobs, 2 extension tokens**. The password is already
+Django `pbkdf2_sha256`, so the Werkzeug compatibility code is dead. **The account has no email**,
+which matters once email becomes the login identifier (see Phase 1.4).
 
-Decisions taken: keep the Django backend and add **token auth** for the extension; extension scope is **one-click save from job pages** plus the board; **fixes land before the port**.
+Jobs are already scoped per user (`Job.user` FK, every query filters on it). Multi-tenancy
+is done; this plan is about **identity** and **billing**.
 
-**Guiding constraint: no new Python dependencies.** CORS and tokens are hand-rolled (~40 and ~80 lines). The project has exactly one Python dep today and that is worth preserving.
+### Decisions
+
+- **Django's built-in auth plus [django-allauth](https://docs.allauth.org/) in headless mode**, not a
+  hosted provider (Clerk/Auth0). Users stay in our Postgres, no per-user fees, no second system to
+  sync with Stripe. allauth's headless mode serves JSON endpoints built for SPAs, so the React app
+  keeps its own UI.
+- **Log in with email**; `username` stays as a display name ("Adrian's Job Board").
+- **Keep the extension's `ApiToken`** (device list, revoke, 90-day expiry already work). Only how
+  a token is *issued* changes.
+- **Stripe Checkout + Customer Portal + webhooks with the `stripe` SDK**, hand-rolled (~200 lines)
+  rather than dj-stripe: we need one customer id and one subscription status, not a mirror of
+  Stripe's schema.
+
+### Answers (2026-09-24)
+
+1. Account 1's email: **adrianndp@hotmail.com** (Phase 1.4).
+2. **Free = 5 jobs**; everything beyond that is paid (Phase 4).
+3. Email provider: **Resend** (Phase 2).
+4. Google sign-in: **later**, not at launch (Phase 3).
 
 ---
 
-## Phase 0 — Environment hygiene (blocking)
+## Phase 0 — Groundwork ✅ done 2026-09-24
 
-The dev venv is **Python 3.14.4** with stale Flask/Werkzeug/SQLAlchemy still installed; the Dockerfile is 3.12.
+1. `requirements.txt`: add `django-allauth[mfa]` (pinned). `[socialaccount]` is only added in Phase 3.
+2. **Back up** before any migration:
+   `pg_dump -h localhost -U postgres localdb > backup-pre-auth.sql`.
+3. **Redis** as the cache (`django.core.cache.backends.redis.RedisCache`, `REDIS_URL` env, a `redis`
+   service in docker-compose). allauth's rate limits and ours use the cache; the DB cache's `incr`
+   isn't atomic across workers (the README says so), which matters once strangers can hit login.
+   Dev can keep the DB cache if `REDIS_URL` is unset.
 
-*(Corrected during implementation: Django 5.2.17 **does** support Python 3.14 — it declares the 3.14 classifier and `manage.py check` passes. An earlier draft of this plan claimed 5.2 was 3.10–3.13 only; that was true of Django 5.2.0, not of this patch release. No new interpreter is needed, and the 3.12 Dockerfile is also fine. Only the stale Flask packages needed clearing.)*
+## Phase 1 — Switch to Django's built-in accounts (the risky part; do it first) ✅ done 2026-09-24
 
-1. Delete `backend/venv/`; recreate at `backend/.venv` on the same Python 3.14 (already matched by `.gitignore`), so Flask/SQLAlchemy/Werkzeug are gone.
-2. `.gitignore` — add `backend/venv/`, `frontend/dist-extension/`, `ext-key.pem`.
-3. `backend/requirements.txt` — add `gunicorn==23.0.0` (today it exists only in the Dockerfile, so dev and prod disagree).
-4. **Back up the DB before Phase 1:** `cp backend/instance/jobs.db backend/instance/jobs.db.pre-owner-fk`. SQLite rebuilds the whole `job` table for the `NOT NULL` alter.
+> Done as two migrations: `0003` (hand-written renames) and `0004` (generated). Tested on a restored
+> copy first, then applied to `localdb`. Backup: `backups/localdb-pre-auth.sql`. Email set and verified
+> via a one-off shell, not a migration, so no personal data is committed. Deviations: `email` stays
+> nullable until Phase 2 makes it required at sign-up; the 2 old extension tokens were left to expire
+> (sign in once again). Login accepts username *or* email until Phase 2.
 
----
+The good news: `AUTH_USER_MODEL = 'accounts.User'` names the **same model that already exists**,
+and `contrib.auth` has never been migrated in this database. So this isn't the notoriously painful
+"swap the user model mid-project"; it's "add fields to the existing model and point Django at it."
+`auth`'s first migration depends on `accounts`' first migration, which is already applied.
 
-## Phase 1 — Backend security + data model
+### 1.1 Model: `backend/accounts/models.py`
 
-### 1.1 `backend/config/settings.py`
+- `class User(AbstractUser)`, keeping `db_table = 'user'` (so `Job.user` / `ApiToken.user` FKs
+  and their data are untouched).
+- `password_hash` → Django's `password` field. `created_at` → `date_joined`.
+- `email = models.EmailField(unique=True, null=True)` for now; made non-null in 1.4.
+- Delete `check_werkzeug_password`, `set_password`/`check_password` overrides, `session_version()`.
+- `utcnow()` stays (jobs use it).
 
-- `DEBUG = os.environ.get('DJANGO_DEBUG') == '1'` — **fail closed**. Keep `runserver` ergonomic by setting `os.environ.setdefault('DJANGO_DEBUG', '1')` in `backend/manage.py` *only when `sys.argv[1] == 'runserver'`*; gunicorn never goes through `manage.py`, so prod can't inherit it.
-- `ALLOWED_HOSTS` from env; empty + DEBUG → localhost set; empty + not DEBUG → raise `ImproperlyConfigured` (clearer than Django's generic 400 on every request).
-- Always on: `SECURE_CONTENT_TYPE_NOSNIFF`, `SECURE_REFERRER_POLICY='same-origin'`, `X_FRAME_OPTIONS='DENY'`, `SECURE_CROSS_ORIGIN_OPENER_POLICY='same-origin'`.
-- New `HTTPS=1` env gates `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS=31536000` (+subdomains, preload), `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`. Keep reading the old `SESSION_COOKIE_SECURE` var as a fallback so `docker-compose.yml` doesn't silently regress.
-- `SECURE_PROXY_SSL_HEADER` **only when `TRUSTED_PROXY_COUNT > 0`** (see 1.4). `frontend/nginx.conf` already sets `X-Forwarded-Proto`.
-- `AUTH_PASSWORD_VALIDATORS` (MinimumLength 10, CommonPassword, NumericPassword, UserAttributeSimilarity). These work **without** installing `django.contrib.auth` — `password_validation.validate_password(pw, user)` just `getattr`s `username`/`email`, which `accounts.models.User` has.
-- `DATA_UPLOAD_MAX_MEMORY_SIZE = 100*1024` — the API only takes small JSON.
-- `CACHES` → `DatabaseCache` at `django_cache` (needed by 1.4).
+### 1.2 Migration `accounts/0003_abstractuser.py` (written by hand, reviewed line by line)
 
-`MIDDLEWARE` (order is load-bearing, see 3.3):
+- `RenameField` `password_hash`→`password`, `created_at`→`date_joined`.
+- `AddField`: `first_name`, `last_name`, `is_staff`, `is_superuser`, `is_active` (default True),
+  `last_login`, `groups`, `user_permissions` (depends on `('auth', '0012_…')`).
+- Check with `makemigrations --check` afterwards: no leftover diff.
+- **Test on a copy first:** `createdb localdb_copy && pg_dump localdb | psql localdb_copy`, run
+  `migrate`, sign in as Adrian, count jobs = 76.
+
+### 1.3 Settings, sessions, middleware
+
+- `INSTALLED_APPS`: `django.contrib.contenttypes`, `django.contrib.auth`, `django.contrib.sessions`,
+  `allauth`, `allauth.account`, `allauth.headless`, `allauth.mfa`, then `accounts`, `jobs`.
+- `AUTH_USER_MODEL = 'accounts.User'`.
+- `SESSION_ENGINE` → `cached_db` (server-side, so sessions can be revoked). **One-time effect:
+  everyone signs in again**, including the web session; extension tokens keep working.
+- Middleware: add `AuthenticationMiddleware` after sessions and `allauth.account.middleware.AccountMiddleware`.
+- `accounts/auth.py`: `current_user()` → bearer token first (unchanged), else `request.user` if
+  authenticated. `start_session()` → `django.contrib.auth.login()`. The custom
+  `session['user_id']`/`session_version` pair is removed; Django already invalidates sessions on
+  password change via `get_session_auth_hash()`.
+- `ApiToken.session_version`: snapshot `user.get_session_auth_hash()` instead, so a password change
+  still revokes every token. Existing 2 tokens: migrate them by recomputing in a data migration
+  (or accept that the extension signs in once more; simpler, and it's 2 tokens you own).
+
+### 1.4 Email for the existing account
+
+- Data migration or `manage.py shell`: set account 1's email and create the allauth
+  `EmailAddress(primary=True, verified=True)` row. Email: adrianndp@hotmail.com.
+- Then `email` → `NOT NULL` (a later migration).
+
+### 1.5 Tests
+
+Existing `accounts/tests.py` is rewritten where it encodes single-account behaviour
+(`test_signup_closes_after_the_first_account`, `setup_required`). Everything about tokens, CSRF,
+bearer-vs-cookie and job scoping must still pass **unchanged in intent**. Add: user A can't
+see/patch/delete user B's jobs through session *or* token (exists in `jobs/tests.py`; keep it green).
+
+**Exit criteria:** you sign in with email + password, see 76 jobs; extension still works; all
+tests pass on Postgres.
+
+## Phase 2 — Open sign-up with allauth headless — core done 2026-09-24
+
+> Done: allauth headless at `/api/_allauth/`, open sign-up, email login, verification and
+> password reset **by emailed code** (no SPA routes or router needed — a change from 2.2),
+> Resend SMTP via `RESEND_API_KEY`, old single-account code deleted (`SignupView`, `LoginView`,
+> `setup_required`, `reset_password` command), `email` now required, extension signs in with
+> email and must be verified. `allauth.mfa` was removed again until Phase 3 (its tables unapplied).
+> Checked end to end in Chrome against Postgres.
+> **Still open:** account deletion endpoint, per-user job cap / write rate (2.3), a Resend
+> key + verified sending domain for real mail.
+
+### 2.1 Backend
+
+- Mount `allauth.headless.urls` at **`/api/_allauth/`**. It rides the existing `/api` proxy in
+  nginx and Vite, and `api_guard` treats the prefix as public.
+- Settings:
+  - `ACCOUNT_LOGIN_METHODS = {'email'}`, `ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*']`
+  - `ACCOUNT_EMAIL_VERIFICATION = 'mandatory'` (no board until the email is confirmed)
+  - `ACCOUNT_LOGIN_BY_CODE_ENABLED` optional (passwordless email codes)
+  - `HEADLESS_ONLY = True`, `HEADLESS_FRONTEND_URLS` → our SPA routes for verify/reset links
+  - `ACCOUNT_RATE_LIMITS` (allauth's defaults are sane; tune signup per IP)
+  - Existing `AUTH_PASSWORD_VALIDATORS` keep applying.
+- Email: `EMAIL_BACKEND` = console in dev, Resend's SMTP (`smtp.resend.com`, API key as password) in prod via env
+  vars; `DEFAULT_FROM_EMAIL`.
+- **Delete** `SignupView`, `LoginView`, `StatusView`'s `setup_required`, `SIGNUP_CLOSED`,
+  `accounts/ratelimit.py`'s login buckets (allauth rate-limits login), `reset_password` command
+  (self-service reset replaces it; `createsuperuser`/`changepassword` exist for emergencies).
+- **Keep** `LogoutView` for bearer revocation, `TokenListView`, `TokenDetailView`.
+- `TokenView` (extension sign-in): authenticate via `django.contrib.auth.authenticate(email=…)`,
+  **refuse unverified emails**, keep its own throttle (`ratelimit.py` survives just for this).
+  See Phase 3.2 for MFA.
+- **Account deletion** endpoint (`DELETE /api/auth/account`, password re-check). Cascades to jobs and
+  tokens. Required for GDPR and app-store-style expectations.
+
+### 2.2 Frontend
+
+- No router exists today. Add `react-router-dom` (small) for: `/login`, `/signup`,
+  `/verify-email/:key`, `/password/reset`, `/password/reset/:key`, `/` (board).
+- `api.ts`: auth calls move to allauth's headless browser endpoints
+  (`/api/_allauth/browser/v1/auth/{login,signup,session,email/verify,password/request,password/reset}`).
+  CSRF handling stays the same (allauth uses Django's `csrftoken` cookie).
+- `LoginPage.jsx`: email instead of username; sign-up copy drops "only account"; "Forgot password?"
+  link; "Check your inbox" state after sign-up.
+- Extension `SavePanel`/`LoginPage` token mode: email instead of username.
+
+### 2.3 Hardening for strangers
+
+- Per-user limits so one account can't fill the DB: cap jobs per user (say 5,000) and request
+  rate on `POST /api/jobs`.
+- Bot protection on sign-up: allauth rate limits first; add Cloudflare Turnstile only if sign-up
+  spam actually shows up.
+
+**Exit criteria:** a new person signs up, gets an email, verifies, sees an empty board; can
+reset a forgotten password; can delete their account. Your account is unaffected.
+
+## Phase 3 — MFA and social login (optional for launch)
+
+### 3.1 MFA
+
+`allauth.mfa` gives TOTP + recovery codes via the same headless API. Frontend: settings page to
+enroll (QR code), and a code step in the login flow.
+
+### 3.2 Extension sign-in with MFA
+
+Once MFA exists, `TokenView` (email + password → token) **bypasses the second factor**. Fix
+before enabling MFA: replace it with a hand-off. The extension opens the web app at
+`/connect-extension?nonce=…`, the signed-in user confirms, the backend issues the token, and the
+extension collects it once by nonce. Nobody ever types a password into the extension, and MFA is
+covered by the web login.
+
+### 3.3 Google sign-in
+
+`allauth.socialaccount.providers.google`; headless "provider redirect" flow. CSP currently has
+`form-action 'none'`; it must allow `'self'` for the redirect form post (both in
+`config/security.py` and `frontend/nginx.conf`).
+
+## Phase 4 — Stripe subscriptions
+
+### 4.1 Model: new `billing` app
+
 ```
-config.cors.cors_middleware            ← must be first
-django.middleware.security.SecurityMiddleware
-django.contrib.sessions.middleware.SessionMiddleware
-django.middleware.csrf.CsrfViewMiddleware
-accounts.middleware.api_guard
-django.middleware.clickjacking.XFrameOptionsMiddleware
-config.security.security_headers
+BillingAccount
+  user                  OneToOne → accounts.User
+  stripe_customer_id    unique
+  subscription_id       nullable
+  status                'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | …
+  price_id              which plan
+  current_period_end    datetime
+  cancel_at_period_end  bool
+StripeEvent
+  event_id              unique, for idempotency
+  processed_at
 ```
 
-### 1.2 Job ownership FK
-
-**Signup policy stays closed** (single account). Rationale: this box goes on the public internet for the extension to reach; open registration is abuse surface for no benefit. Adding the FK now makes multi-user a policy flip later instead of a migration later.
-
-- `backend/jobs/models.py` — `user = ForeignKey('accounts.User', on_delete=CASCADE, related_name='jobs', db_column='user_id')`. Leave `to_dict()` alone (don't leak `user_id`).
-- **New** `backend/jobs/migrations/0002_job_user.py`, deps `[('jobs','0001_initial'), ('accounts','0001_initial')]`: `AddField(null=True)` → `RunPython` backfill to `User.objects.order_by('id').first()` (raise `RuntimeError` if jobs exist but no user) → `AlterField(null=False)`.
-- `backend/jobs/views.py` — filter every queryset by `current_user(request)` (import from `accounts.auth`; it becomes request-cached in 3.2, so repeat calls are free). `JobDetailView.dispatch` returns **404, not 403**, for another user's job — no enumeration oracle.
-- `jobs/management/commands/seed.py` and `import_jobs.py` — add a required `--username`; both break on `NOT NULL` otherwise.
-
-### 1.3 Throttle — replace the in-memory dict
-
-**New** `backend/accounts/ratelimit.py`:
-- `client_ip(request)`: read `X-Forwarded-For` **only** when `settings.TRUSTED_PROXY_COUNT > 0`, taking index `-TRUSTED_PROXY_COUNT`; otherwise `REMOTE_ADDR`. Reading XFF unconditionally is the standard spoof bypass. `docker-compose.yml` sets `TRUSTED_PROXY_COUNT: 1`.
-- `hit(bucket, key, limit, window) -> (allowed, retry_after)` over `django.core.cache`.
-
-**Key design.** With a single account, *any username-only counter is itself the DoS* — that is precisely today's bug. So:
-- `login:{username}:{ip}` — 5 / 15 min. An attacker rotating IPs cannot lock the real user out.
-- `loginip:{ip}` — 20 / 15 min across all usernames, stops single-host spraying.
-- **Deliberately no global per-username lock.** PBKDF2 + the 10-char validator floor is the account's protection. Document this in the README so it isn't "fixed" back.
-- No `time.sleep()` — under `gunicorn -w 2`, a sleeping worker *is* a DoS.
-
-`backend/accounts/views.py` — delete `failed_logins`/`MAX_FAILED_LOGINS`/`LOCKOUT_SECONDS`; extract `authenticate(request, data) -> (user, error_response)` shared by `LoginView` and the new `TokenView` so the throttle can't be bypassed via the token endpoint; add a signup throttle (5/hr per IP).
-
-Accepted limitation: `DatabaseCache.incr` isn't atomic across workers, so a couple of extra attempts may slip per window. The precise fix (a `LoginAttempt` model with `select_for_update`) is ~40 lines for no practical gain at this threshold — note it in the README.
-
-### 1.4 CSRF — enable the real middleware, exempt bearer
-
-**Rule: CSRF is enforced for every unsafe `/api/*` request that is not bearer-authenticated.** Bearer requests carry no ambient authority, so they're exempt by construction.
-
-- Add `CsrfViewMiddleware` (no `django.contrib.sessions` app needed).
-- In `accounts/middleware.py`, set `request._dont_enforce_csrf_checks = True` when `request.auth_scheme == 'bearer'`. All middleware request-phase code runs before any `process_view`, so list position doesn't matter.
-- Exactly **one** `@csrf_exempt` view in the codebase: `POST /api/auth/token`. It takes credentials in the body and exercises no ambient authority, and the extension has no CSRF cookie to present.
-- `/api/auth/login` and `/signup` stay protected — login CSRF is real (it logs a victim into an attacker's account).
-- `StatusView.get` → wrap in `ensure_csrf_cookie` so the SPA has a `csrftoken` before the login form; it already calls `/api/auth/status` on boot via `useAuthStatus`.
-- **This closes the `DELETE` hole.** Keep the `application/json` check as defence in depth against HTML-form posts, with a comment stating plainly that it was never the CSRF defence.
-- `PUBLIC_API_PATHS`: **remove** `/api/auth/logout` (it's currently an unauthenticated forced-logout nuisance), **add** `/api/auth/token`. No frontend change needed — `useLogout` already passes `notifyUnauthorized: false` and `App.jsx:56` does `await logout().catch(() => {})`.
-
-### 1.5 Link validation + length caps
-
-**New** `backend/jobs/validators.py`:
-- `clean_link(value)` — `urlsplit`, require `http`/`https` + non-empty netloc, reject control chars/whitespace, cap 500. Else `400`.
-- `clean_text(value, max_len)` — trim, collapse whitespace, truncate. **SQLite doesn't enforce `VARCHAR(n)` and `objects.create()` doesn't validate `max_length`** — today a 100 KB title writes straight into `job.name`, and the extension can send one.
-
-Apply in `JobListView.post` / `JobDetailView.patch` **only when the key is present**. Reuse the existing `optional_str` as the first step of `clean_text`.
-
-**Legacy-link carve-out (required, not optional).** Jobs 33, 48 (`'easy apply'`) and 37 (`'easyApply'`) hold non-URL text in `link`. `AddJobModal.jsx:40` sends the *whole* form — including `link` — on every edit, so a plain reject-with-400 rule would make those three rows permanently uneditable. Therefore on **PATCH**: if the incoming `link` fails `clean_link` **but is byte-identical to the currently stored value**, pass it through unchanged; otherwise 400. On **POST** (new jobs, including every extension save) an invalid link is always a 400. This keeps the user's own notes, keeps the cards editable, and still blocks `javascript:` from ever entering the table. Cover it in `jobs/tests.py`: PATCH echoing `'easy apply'` → 200; PATCH sending `javascript:alert(1)` on that same row → 400.
-
-### 1.6 Tests (new — the project has none, and this phase changes auth-critical behaviour)
-
-`backend/accounts/tests.py`, `backend/jobs/tests.py`, Django's built-in runner, no new deps:
-ownership isolation (B can't see/PATCH/DELETE A's jobs → 404) · `clean_link` rejects `javascript:`/`data:`/`vbscript:`/`//evil` · throttle: 5 fails one IP → 429, 6th from a different XFF → 401 not 429 · CSRF: cookie DELETE without token → 403, bearer DELETE → 204 · unauthenticated logout → 401 · revoked/expired/post-password-reset tokens → 401.
-
----
-
-## Phase 2 — Frontend security (web SPA)
-
-- **`javascript:` XSS.** New `frontend/src/lib/safeUrl.ts` → `safeHref(link)` returns the href only for `http:`/`https:`, else `null`. `JobCard.jsx` renders the `<a>` only when non-null, otherwise a plain `<span>`. Both this *and* server-side validation are required: the server protects new writes, this protects the 76 rows already in the DB (and makes the legacy `'easy apply'` rows stop rendering as dead links).
-- **Bundle Inter.** Add `@fontsource-variable/inter`, `@import` it in `src/index.css`, and delete the three Google Fonts `<link>` tags from `frontend/index.html`. Required for MV3 CSP, and it removes an un-SRI'd third-party resource from the web app.
-- **CSP in both places.** The SPA is served by Django's `ReactAppView` *and* by nginx — a header in only one is a header in neither for the path you actually use. New `backend/config/security.py` middleware for HTML responses, mirrored in `frontend/nginx.conf`. `'unsafe-inline'` must stay in `style-src` (React inline `style` props in `JobCard.jsx`/`AddJobModal.jsx`); everything else is `'self'`.
-- **CSRF header** in `api.ts`'s single `request<T>()` helper: add explicit `credentials: 'same-origin'` (today omitted, working only by same-origin accident) and send `X-CSRFToken` on POST/PATCH/**DELETE** — the current code sets headers only for POST/PATCH, so DELETE would start 403'ing the instant CSRF is on.
-
----
-
-## Phase 3 — Token auth + CORS
-
-### 3.1 Tokens: opaque + DB, not JWT
-
-Instantly revocable, no signing/expiry logic to get wrong, no new dep.
-
-`backend/accounts/models.py` — `ApiToken`: `user` FK, `token_hash` (sha256 hex, unique+indexed), `prefix` (display only), `device_name`, `session_version`, `created_at`, `last_used_at`, `expires_at`, `revoked_at`. New `accounts/migrations/0002_apitoken.py`.
-
-**New** `backend/accounts/tokens.py`:
-- `issue(user, device_name)` — `secrets.token_urlsafe(32)`, store only the hash, 90-day expiry, and snapshot `user.session_version()`. Reusing that existing method means `manage.py reset_password` already invalidates every token, mirroring session behaviour with zero extra plumbing.
-- `resolve(raw)` — reject revoked / expired / stale-`session_version`. Bump `last_used_at` at most hourly, else every API call is a SQLite write.
-
-`backend/accounts/views.py` / `urls.py`:
-- `TokenView` `POST /api/auth/token` (`@csrf_exempt`) → `201 {token, expires_at, username}`, routed through the shared `authenticate()` so the throttle applies. Uses the existing `read_json` (`config/views.py`) and `read_str`.
-- `LogoutView` becomes authenticated and dual-aware: bearer → revoke the presenting token; cookie → `session.flush()`. No separate delete endpoint needed.
-- `TokenListView` `GET`/`DELETE /api/auth/tokens[/<id>]` — makes revocation real rather than theoretical.
-
-### 3.2 Dual auth resolution
-
-**The web SPA keeps cookie sessions; only the extension uses tokens.** An `HttpOnly` cookie can't be read by XSS while a token in JS can, the SPA is same-origin so cookies just work, and the frontend diff stays tiny.
-
-`backend/accounts/auth.py` — keep the public surface (`current_user`, `start_session`) so no caller is rewritten, but make it dual and request-cached: try `Authorization: Bearer` via `tokens.resolve()`, else the existing session path; memoize on `request._auth_user` and expose `request.auth_scheme` / `request.auth_token`.
-
-### 3.3 CORS — hand-rolled
-
-New `backend/config/cors.py`, ~40 lines. Allowlist from `CORS_ALLOWED_ORIGINS` env (e.g. `chrome-extension://<id>`), empty by default; echo `Access-Control-Allow-Origin` + `Vary: Origin` only on a match; answer preflights with 204. **Never emit `Access-Control-Allow-Credentials`** — the extension is token-only, so even a mistakenly allowlisted origin can't ride the session cookie. Hand-rolling keeps that property visible and auditable instead of one config flag away from a disaster.
-
-Order matters twice: it must precede `SecurityMiddleware` (with `SECURE_SSL_REDIRECT` on, a preflight would otherwise 301 and fail opaquely) and must wrap `api_guard` (a preflight carries no `Authorization`, and `/api/jobs` isn't public, so `api_guard` would 401 it — and it makes 401/415/403 bodies readable rather than opaque network errors).
-
-### 3.4 Pin the extension ID
-
-An unpacked extension's ID derives from its directory path unless `manifest.json` carries a `key`, so moving the folder silently breaks CORS. Generate once with `openssl genrsa 2048 > ext-key.pem` (keep out of git) + `openssl rsa -pubout -outform DER | openssl base64 -A`, put it in the manifest, load unpacked once, copy the ID Chrome shows into `CORS_ALLOWED_ORIGINS`. **Do this before ever loading unpacked.**
-
-### 3.5 Deployment
-
-`backend/Dockerfile` CMD → `migrate --fake-initial --noinput && createcachetable && exec gunicorn …`. `docker-compose.yml` — add `TRUSTED_PROXY_COUNT`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `HTTPS`, `CSRF_TRUSTED_ORIGINS`.
-
----
-
-## Phase 4 — Shared transport (so the extension reuses the SPA verbatim)
-
-**New** `frontend/src/lib/transport.ts` — `configureApi({baseUrl, credentials, getToken, onUnauthorized})` / `getTransport()`. Defaults are exactly today's web behaviour, so `frontend/src/main.jsx` needs **no change**.
-
-`frontend/src/api.ts` — modify only `request<T>()`: prefix `baseUrl`, use `transport.credentials`, send `Authorization: Bearer` when a token resolves (and skip CSRF then), else the CSRF header. Cache the token in a module variable invalidated by `chrome.storage.onChanged` so it isn't an async storage read per call. Add `tokenLogin` + `useTokenLogin()` following the existing `useLogin`/`useRequest` shape.
-
-`ApiError`, `unauthorizedListeners`, `useUnauthorized`, `useAuthStatus`, `useJobs`, `useCreateJob`, `useUpdateJob`, `useDeleteJob` are reused **untouched** — the existing 401 broadcast is already exactly the "token died, show login" signal the extension needs.
-
-`LoginPage.jsx` — one optional prop `authMode: 'session' | 'token'` (default `'session'`); `onAuthenticated(username)` is unchanged. `App.jsx` passes it through.
-
----
-
-## Phase 5 — Extension scaffold
-
-**Surface: a full-tab board page + a side panel. No popup.** Six dnd columns are unusable at popup width; `board.html` in a real tab reuses `App.jsx` wholesale. The side panel is right-sized for "save this page / recent saves / settings" and, unlike a popup, stays open while you browse listings.
-
-**Build: one `frontend/` workspace, extra Vite configs — not a separate top-level package.** React, dnd and every component are shared; a second `package.json` means drifting deps for no isolation.
-
-```
-frontend/
-  vite.config.js               ← UNCHANGED (web SPA → ../backend/dist)
-  vite.extension.config.js     ← pages → dist-extension/ (publicDir = extension/public)
-  vite.extension.sw.config.js  ← service worker, lib mode, format 'es', single file
-  extension/
-    public/manifest.json, public/icons/{16,48,128}.png
-    board.html, sidepanel.html
-    src/{board.jsx,sidepanel.jsx,SavePanel.jsx,settings.js,tokenStore.js,background.js}
-```
-
-Two builds because Rollup's `format` is per-build and MV3 has conflicting needs: pages want code-split ESM, the service worker must be one file. Add `resolve.alias { '@app': frontend/src }` to all three so extension code imports `@app/api`, `@app/App`, `@app/lib/safeUrl`. Scripts: `build:ext` (two `vite build -c …`), `build:all`. No `@crxjs/vite-plugin` — a large beta dep in a project with five.
-
-**API host:** build-time `VITE_API_BASE` (`.env.development` → `http://localhost:5001`, `.env.production` → your HTTPS host), overridable at runtime via `chrome.storage.local.apiBase` in the side panel's settings row; a custom host triggers `chrome.permissions.request({origins:[host+'/*']})`.
-
-**`manifest.json` — least privilege:** `permissions: [activeTab, contextMenus, storage, sidePanel]`, `host_permissions: ["http://localhost:5001/*"]`, `optional_host_permissions: ["https://*/*"]` (for a user-set prod API host only), `background.service_worker` + `type: module`, `side_panel.default_path`, plus the `key` from 3.4.
-
-**No content script and no broad host permissions.** Nothing is ever injected into a page, so reading a tab's title and URL needs *zero* standing host permissions. Don't declare `content_security_policy`; MV3's default is already what we want and constrains only script/object, not React's inline `style` attributes.
-
----
-
-## Phase 6 — Save flow
-
-**Hard constraint: all API calls live in the service worker or an extension page.** A page-context `fetch` would carry the job board's `Origin` and fail CORS, and "fixing" that would mean allowlisting job-board origins. Corollary: MV3 workers die after ~30s idle, so never cache the token or `apiBase` in a `background.js` module variable — always read `chrome.storage.local`.
-
-**The extension reads no page content.** No content script, no `scripting` permission, no DOM parsing. A draft is built from tab metadata only:
-
-- `tab.title` → job title, or `info.selectionText` when you highlighted the real title before right-clicking.
-- `info.linkUrl` → the posting, so you can save from a results list without opening it; else `info.pageUrl` / `tab.url`.
-- Company and salary are left blank for you to fill.
-
-This drops six files and the entire selector-rot maintenance burden, and it keeps the extension clear of every job board's terms on automated extraction — which matters for a product that may be sold. Trimming to the model caps happens in `background.js`; the **server** caps from 1.5 remain the control.
-
-**Flow** (`background.js`): on install, register the `contextMenus` entry and `sidePanel.setPanelBehavior({openPanelOnActionClick:true})` → on click, build the draft, park it in `chrome.storage.local` and open the side panel → you complete it and press save → `POST {apiBase}/api/jobs` with the bearer token (status is hardcoded `to_be_applied` server-side, no change needed) → badge feedback plus a `job-created` broadcast so an open board tab refreshes → on 401, clear the token and show login.
-
-`SavePanel.jsx` always shows an **editable form before saving** — a tab title is rarely the job title on its own. Reuses `useCreateJob`/`useJobs`/`useAuthStatus`/`useUnauthorized` from `@app/api` and `safeHref`.
-
-`board.jsx` — `configureApi({baseUrl, credentials:'omit', getToken})`, then render the existing `@app/App` with `authMode="token"`.
-
-## Phase 7 — Docs
-
-Replace `PLAN.md` with this plan. Update `README.md`: the "lock applies to everyone at once" paragraph (that behaviour is deliberately gone), the new env vars (`DJANGO_DEBUG`, `HTTPS`, `TRUSTED_PROXY_COUNT`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`), the `--username` flag on `seed`/`import_jobs`, and an Extension section (build, load unpacked, set API host, revoke a device).
-
----
-
-## Verification
-
-**Backend** (from `backend/`, venv active, **after the DB backup**):
-```bash
-python manage.py check
-DJANGO_DEBUG= HTTPS=1 ALLOWED_HOSTS=jobs.example.com python manage.py check --deploy   # zero W0xx
-python manage.py makemigrations --check --dry-run    # "No changes detected"
-python manage.py migrate && python manage.py createcachetable && python manage.py test
-```
-Then confirm the backfill: `select count(*) from job where user_id is null` → 0, `where user_id=1` → 76.
-
-**Token auth** — `POST /api/auth/token` → 201 + token; `GET /api/jobs` with bearer → 200/76 jobs, without → 401; `POST /api/auth/logout` with bearer → 204, then the same token → 401; `manage.py reset_password` then an old token → 401.
-
-**CORS** — preflight `OPTIONS /api/jobs` with the extension `Origin` → 204 with `Access-Control-Allow-Origin` echoed, `Vary: Origin`, `authorization` in Allow-Headers, and **no `Access-Control-Allow-Credentials`**. Same preflight with `Origin: https://evil.example` → no ACAO header at all.
-
-**CSRF / the DELETE hole** — with a cookie session, `DELETE /api/jobs/999` without `X-CSRFToken` → **403** (this is the fixed hole); with the header → 404; with a bearer token → 404, no CSRF needed.
-
-**Link validation** — `POST /api/jobs` with `javascript:alert(1)`, `data:text/html,…`, `//evil.example`, `vbscript:x` → all 400. Manually: a legacy card whose `link` is `'easy apply'` renders as plain text, not an anchor.
-
-**Throttle (proves the DoS is gone)** — with `TRUSTED_PROXY_COUNT=1`, six bad logins from `X-Forwarded-For: 203.0.113.9` → `401×5, 429`; then one bad login from `198.51.100.4` → **401, not 429**. A different client is not locked out of the only account.
-
-**Ownership isolation** — create a second user with a job via `manage.py shell`; `GET /api/jobs` as the first user must not contain it.
-
-**Frontend** — `npm run build`, then `grep -r fonts.googleapis dist/` returns nothing; `docker compose up --build`, `curl -sI localhost:3000/` shows the CSP header; open the app and check DevTools for zero CSP violations, then drag / edit / delete / log out / log back in.
-
-**Extension** — `npm run build:ext`, load `frontend/dist-extension` unpacked, confirm the ID matches `CORS_ALLOWED_ORIGINS`. Log in via the side panel and verify the token is in `chrome.storage.local` and **not** localStorage. Open the full board → 76 jobs, drag a card, confirm the web SPA reflects it after reload. Then save a posting from the context menu and another from the side panel's *Use current tab*, confirming each lands in **To Be Applied** on both surfaces. Check the service worker console for zero CORS errors. Negative: backend stopped → error not hang; revoked token → bounce to login.
-
----
-
-## Data safety
-
-Verified against the live DB: **1 user (`id=1`, Adrian), 76 jobs, 74 with a link, 3 of those non-URLs.**
-
-Nothing in this plan deletes a row. The ownership migration adds a column and backfills; `import_jobs` still upserts by id and `seed` still only appends; `backend/venv/` is a virtualenv, not data (the DB lives in `backend/instance/`); `emptyOutDir` only touches generated build folders. The single moment the rows move is the SQLite table rebuild in 1.2 — transactional and rolling back on failure, but the Phase-0 `cp` is the guaranteed undo and is not skippable.
-
-Two behaviour changes that are **not** data loss but will be noticed: the 10-char password floor applies only when a password is *set*, so the existing login is unaffected (it bites only on the next `reset_password`); and enabling CSRF makes every already-open SPA tab 403 on its next write until reloaded.
-
-## Risks
-
-1. ~~**Python 3.14 is not a supported Django 5.2 runtime.**~~ **Resolved — this was wrong.** Django 5.2.17 declares 3.14 support and passes `manage.py check` on it. Phase 0 reduced to clearing the stale Flask packages out of the venv.
-2. **The `job` table gets rebuilt** by the `NOT NULL` alter on SQLite. 76 rows is nothing, but take the backup.
-3. **`--fake-initial` only fakes `0001`.** Both new `0002` migrations genuinely execute against the live volume-mounted DB on the next `docker compose up`.
-4. **Enabling CSRF breaks live clients.** Every currently-open SPA tab 403s on its next write until reloaded, as does any script hitting the API with a session cookie.
-5. **`activeTab` lapses on navigation**, so the side panel's *Use current tab* can come back with an empty URL once you have browsed on. The context menu re-grants it on every click and is the reliable path; the panel says so when the read comes back empty.
-6. **Extension ID stability** — without the manifest `key`, moving `dist-extension/` changes the ID and CORS breaks with an opaque network error.
-7. **`DatabaseCache.incr` isn't atomic** across workers; a few extra login attempts may slip per window. Documented trade-off.
-8. **`chrome.sidePanel` needs Chrome 114+**, `openPanelOnActionClick` 116+.
-9. **`'unsafe-inline'` stays in `style-src`** because of React inline `style` props. Tightening it means converting those to class-set custom properties — out of scope.
+Separate from `User` so billing can't disturb the auth tables.
+
+### 4.2 Endpoints
+
+- `POST /api/billing/checkout` → creates a Checkout Session (mode=subscription,
+  `client_reference_id=user.id`, customer reused if one exists) and returns its URL.
+- `POST /api/billing/portal` → Customer Portal session URL (cancel, change card, invoices).
+- `GET  /api/billing/status` → plan + status for the UI.
+- `POST /api/billing/webhook` → **public, csrf-exempt, signature-verified on the raw body**
+  (`stripe.Webhook.construct_event` with `STRIPE_WEBHOOK_SECRET`). Handles
+  `checkout.session.completed`, `customer.subscription.created|updated|deleted`,
+  `invoice.payment_failed`. Stores `event.id` first; duplicates are no-ops. On subscription events,
+  re-fetch the subscription from Stripe rather than trusting event order.
+- `api_guard`: webhook path is public; it's `application/json` already, so the JSON-only
+  check passes.
+
+### 4.3 Entitlements
+
+One function, `billing.plan_for(user) -> Plan`, used by the views (e.g. the job cap on
+`POST /api/jobs`, export). Free plan: 5 jobs total; paid: unlimited. Existing jobs over the cap are never deleted -- only new ones are blocked. Grace period: treat `past_due`
+as active for N days.
+
+### 4.4 Frontend
+
+"Upgrade" button → checkout URL; "Manage billing" → portal URL; plan badge; a friendly 402 when
+a free limit is hit.
+
+### 4.5 Testing
+
+Stripe test mode + `stripe listen --forward-to localhost:5001/api/billing/webhook`. Unit tests with
+recorded event payloads: idempotency, out-of-order events, signature failure → 400.
+
+Env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID(S)`.
+
+## Phase 5 — Launch checklist
+
+- Privacy policy + terms (required by Stripe and Google sign-in).
+- Error tracking (Sentry) and uptime check on `/api/health`.
+- Daily `pg_dump` off the server, plus one test restore.
+- `HTTPS=1`, real `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`; publish the extension so its ID is fixed.
+- Gunicorn workers sized to CPU; Postgres connection count stays under `max_connections`
+  (`CONN_MAX_AGE` is already 60 s).
+
+## Order and size
+
+| Phase | What | Rough size | Blocks |
+|---|---|---|---|
+| 0 | allauth dep, backup, Redis | small | — |
+| 1 | built-in accounts | medium, careful | everything else |
+| 2 | open sign-up | medium–large (mostly frontend) | Phase 1, email provider |
+| 3 | MFA / Google | medium | Phase 2 |
+| 4 | Stripe | medium | Phase 1 (not 2 or 3) |
+| 5 | launch | small | all |

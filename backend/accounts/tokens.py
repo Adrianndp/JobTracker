@@ -28,7 +28,7 @@ def issue(user, device_name=None):
         token_hash=hash_token(raw),
         prefix=raw[:8],
         device_name=device_name or None,
-        session_version=user.session_version(),
+        session_version=user.get_session_auth_hash(),
         expires_at=utcnow() + TOKEN_LIFETIME,
     )
     return raw, token

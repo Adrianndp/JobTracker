@@ -17,6 +17,17 @@ services:
       retries: 10
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: jobtracker-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]   # cache only; nothing to persist
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
   backend:
     build: ./backend
     container_name: jobtracker-backend
@@ -29,6 +40,9 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}    # e.g. chrome-extension://<id>
       TRUSTED_PROXY_COUNT: 1                             # nginx below is the one proxy in front
       DATABASE_URL: postgres://jobtracker:${POSTGRES_PASSWORD}@db:5432/jobtracker
+      REDIS_URL: redis://redis:6379/0
+      RESEND_API_KEY: ${RESEND_API_KEY:-}                # empty → account emails print to the backend log
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-}
     volumes:
       - ./backend/instance:/app/instance   # secret_key
     ports:
@@ -41,6 +55,8 @@ services:
       start_period: 10s
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
 

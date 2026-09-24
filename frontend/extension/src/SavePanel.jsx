@@ -220,7 +220,6 @@ export default function SavePanel({ onApiBaseChanged }) {
       <div className={styles.panel}>
         <LoginPage
           authMode="token"
-          setupRequired={false}
           onAuthenticated={async (_username, grant) => {
             if (grant?.token) await setToken(grant.token)
             setSession('authed')

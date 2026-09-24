@@ -28,17 +28,24 @@ export interface JobForm {
 export interface AuthStatus {
   authenticated: boolean
   username: string | null
-  setup_required: boolean
 }
 
 export interface Credentials {
-  username: string
+  email: string
   password: string
 }
 
 export interface SignupData extends Credentials {
-  email: string
+  username: string
 }
+
+/**
+ * Outcome of an allauth step: signed in, or waiting on an emailed code
+ * (verify_email after sign-up/login, password_reset_by_code after a reset request).
+ */
+export type AuthResult =
+  | { done: true, username: string }
+  | { done: false, pending: 'verify_email' | 'password_reset_by_code' | null }
 
 export class ApiError extends Error {
   status: number
@@ -66,7 +73,7 @@ function csrfToken(): string | null {
   return match ? decodeURIComponent(match[1]) : null
 }
 
-async function request<T>(url: string, { method = 'GET', body, notifyUnauthorized = true }: RequestOptions = {}): Promise<T> {
+async function send(url: string, method: string, body?: unknown): Promise<Response> {
   const transport = getTransport()
   const headers: Record<string, string> = {}
 
@@ -85,12 +92,16 @@ async function request<T>(url: string, { method = 'GET', body, notifyUnauthorize
     if (csrf) headers['X-CSRFToken'] = csrf
   }
 
-  const res = await fetch(transport.baseUrl + url, {
+  return fetch(transport.baseUrl + url, {
     method,
     headers,
     credentials: transport.credentials,
     body: body === undefined ? undefined : JSON.stringify(body),
   })
+}
+
+async function request<T>(url: string, { method = 'GET', body, notifyUnauthorized = true }: RequestOptions = {}): Promise<T> {
+  const res = await send(url, method, body)
   if (res.status === 401 && notifyUnauthorized) {
     unauthorizedListeners.forEach(listener => listener())
   }
@@ -152,11 +163,33 @@ export function useAuthStatus() {
   return { data, loading, error }
 }
 
-const login = (credentials: Credentials) =>
-  request<{ username: string }>('/api/auth/login', { method: 'POST', body: credentials, notifyUnauthorized: false })
+// allauth's headless API. It answers 200 when signed in, 401 with a list of
+// flows when a step is still pending (e.g. the emailed code), and 400 with
+// errors[] when the input is wrong.
+const ALLAUTH = '/api/_allauth/browser/v1'
 
-const signup = (data: SignupData) =>
-  request<{ username: string }>('/api/auth/signup', { method: 'POST', body: data, notifyUnauthorized: false })
+async function allauth(path: string, body: unknown): Promise<AuthResult> {
+  const res = await send(ALLAUTH + path, 'POST', body)
+  const data = await res.json().catch(() => null)
+  if (res.status === 200 && data?.meta?.is_authenticated) {
+    return { done: true, username: data.data.user.username }
+  }
+  if (res.status === 200 || res.status === 401) {
+    const flow = data?.data?.flows?.find((f: { is_pending?: boolean }) => f.is_pending)
+    return { done: false, pending: flow?.id ?? null }
+  }
+  if (res.status === 429) {
+    throw new ApiError(429, 'Too many attempts. Please wait a minute and try again.')
+  }
+  throw new ApiError(res.status, data?.errors?.[0]?.message || 'Something went wrong. Please try again.')
+}
+
+const login = (credentials: Credentials) => allauth('/auth/login', credentials)
+const signup = (data: SignupData) => allauth('/auth/signup', data)
+const verifyEmail = (code: string) => allauth('/auth/email/verify', { key: code })
+const resendVerification = () => allauth('/auth/email/verify/resend', {})
+const requestPasswordReset = (email: string) => allauth('/auth/password/request', { email })
+const resetPassword = (code: string, password: string) => allauth('/auth/password/reset', { key: code, password })
 
 const logout = () =>
   request<null>('/api/auth/logout', { method: 'POST', notifyUnauthorized: false })
@@ -179,6 +212,18 @@ export function useLogin() {
 export function useSignup() {
   const { run, ...state } = useRequest(signup)
   return { signup: run, ...state }
+}
+
+export function useVerifyEmail() {
+  const verify = useRequest(verifyEmail)
+  const resend = useRequest(resendVerification)
+  return { verifyEmail: verify.run, resendVerification: resend.run }
+}
+
+export function usePasswordReset() {
+  const request = useRequest(requestPasswordReset)
+  const reset = useRequest(resetPassword)
+  return { requestPasswordReset: request.run, resetPassword: reset.run }
 }
 
 export function useTokenLogin() {

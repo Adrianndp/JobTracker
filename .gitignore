@@ -19,3 +19,4 @@ ext-key.pem
 # OS
 .DS_Store
 .env
+backups/

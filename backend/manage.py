@@ -7,7 +7,7 @@ def main():
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
     # ALLOWED_HOSTS only governs requests we serve, and most management commands
-    # (migrate, shell, seed, reset_password) serve none -- so give them a local
+    # (migrate, shell, seed, createsuperuser) serve none -- so give them a local
     # default rather than making settings refuse to load. gunicorn goes through
     # wsgi.py, never here, so production still fails closed.
     os.environ.setdefault('ALLOWED_HOSTS', 'localhost,127.0.0.1,[::1],testserver')

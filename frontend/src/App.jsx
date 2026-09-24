@@ -26,11 +26,10 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
     () => Object.fromEntries(COLUMNS.map(c => [c.id, true]))
   )
 
-  // status: 'checking' | 'setup' | 'login' | 'authenticated'
+  // status: 'checking' | 'login' | 'authenticated'
   const auth = session ?? (
     authStatus.loading ? { status: 'checking', username: null }
       : authStatus.data?.authenticated ? { status: 'authenticated', username: authStatus.data.username }
-      : authStatus.data?.setup_required ? { status: 'setup', username: null }
       : { status: 'login', username: null }
   )
 
@@ -114,10 +113,10 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
   if (auth.status !== 'authenticated') {
     return (
       <LoginPage
-        key={auth.status}
-        setupRequired={auth.status === 'setup'}
         authMode={authMode}
         onAuthenticated={(username, grant) => {
+          // Drop ?mode=signup|forgot from an email link, so logging out shows the login form
+          if (window.location.search) window.history.replaceState(null, '', window.location.pathname)
           onSignIn?.(username, grant)
           setSession({ status: 'authenticated', username })
         }}

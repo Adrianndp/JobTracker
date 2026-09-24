@@ -1,5 +1,4 @@
 from . import tokens
-from .models import User
 
 
 def _resolve(request):
@@ -13,13 +12,11 @@ def _resolve(request):
         # an invitation to fall back to whatever cookie happens to be attached.
         return None, 'bearer', None
 
-    user_id = request.session.get('user_id')
-    if user_id is None:
-        return None, None, None
-    user = User.objects.filter(pk=user_id).first()
-    if user is None or request.session.get('session_version') != user.session_version():
-        return None, None, None
-    return user, 'session', None
+    # AuthenticationMiddleware already checked the session against the
+    # password (get_session_auth_hash), so a changed password lands here as anonymous.
+    if request.user.is_authenticated:
+        return request.user, 'session', None
+    return None, None, None
 
 
 def current_user(request):
@@ -28,8 +25,3 @@ def current_user(request):
         request._auth_user, request.auth_scheme, request.auth_token = _resolve(request)
     return request._auth_user
 
-
-def start_session(request, user):
-    request.session.flush()
-    request.session['user_id'] = user.id
-    request.session['session_version'] = user.session_version()

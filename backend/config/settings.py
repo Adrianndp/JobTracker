@@ -77,8 +77,20 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 X_FRAME_OPTIONS = 'DENY'
 
 INSTALLED_APPS = [
+    'django.contrib.contenttypes',
+    'django.contrib.auth',
+    'django.contrib.sessions',
+    'allauth',
+    'allauth.account',
+    'allauth.headless',
     'accounts',
     'jobs',
+]
+
+AUTH_USER_MODEL = 'accounts.User'
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
 MIDDLEWARE = [
@@ -89,6 +101,8 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
     'accounts.middleware.api_guard',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'config.security.security_headers',
@@ -126,19 +140,78 @@ if not os.environ.get('DATABASE_URL'):
 DATABASES = {'default': database_from_url(os.environ['DATABASE_URL'])}
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-        'LOCATION': 'django_cache',
+# Redis when REDIS_URL is set (docker-compose, production): its incr is atomic,
+# which the login throttle and allauth's rate limits rely on across workers.
+# Without it, the DB cache works but can let a few extra attempts through.
+if os.environ.get('REDIS_URL'):
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': os.environ['REDIS_URL'],
+        }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+            'LOCATION': 'django_cache',
+        }
+    }
 
 # Timestamps are stored as naive UTC, like the Flask version did
 USE_TZ = False
 TIME_ZONE = 'UTC'
 USE_I18N = False
 
-SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
+TEMPLATES = [
+    {
+        # allauth renders its emails (verification code, password reset) from templates
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'APP_DIRS': True,
+        'OPTIONS': {'context_processors': ['django.template.context_processors.request']},
+    },
+]
+
+# Accounts: allauth's headless JSON API, mounted at /api/_allauth/. Email is the
+# login; the username is only the board's display name. Verification and password
+# reset use emailed codes, typed into the same screen, so the SPA needs no routes.
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*']
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+ACCOUNT_EMAIL_VERIFICATION_BY_CODE_ENABLED = True
+ACCOUNT_PASSWORD_RESET_BY_CODE_ENABLED = True
+ACCOUNT_SESSION_REMEMBER = True
+ACCOUNT_EMAIL_SUBJECT_PREFIX = '[Job Tracker] '
+HEADLESS_ONLY = True
+HEADLESS_CLIENTS = ('browser',)  # the extension uses accounts.ApiToken, not allauth's app tokens
+# Links allauth puts in emails. With code-based flows these only appear in the
+# "someone tried to sign up with your address" email; relative paths are made absolute.
+HEADLESS_FRONTEND_URLS = {
+    'account_signup': '/?mode=signup',
+    'account_reset_password': '/?mode=forgot',
+    'account_reset_password_from_key': '/?mode=forgot',
+    'account_confirm_email': '/',
+}
+# Same rule as accounts.ratelimit.client_ip for allauth's own rate limits
+ALLAUTH_TRUSTED_PROXY_COUNT = TRUSTED_PROXY_COUNT
+
+# Mail: Resend's SMTP when RESEND_API_KEY is set, otherwise printed to the
+# console (dev: the verification code shows up in the runserver output).
+# `or`, not a get() default: docker-compose passes unset variables as empty strings
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL') or 'Job Tracker <noreply@localhost>'
+if os.environ.get('RESEND_API_KEY'):
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.resend.com'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = 'resend'
+    EMAIL_HOST_PASSWORD = os.environ['RESEND_API_KEY']
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Stored server-side (cache in front of Postgres) so a session can be revoked,
+# which signed cookies can't.
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
 SESSION_COOKIE_AGE = 30 * 24 * 60 * 60
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
@@ -160,8 +233,6 @@ PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
 ]
 
-# These work without django.contrib.auth in INSTALLED_APPS: validate_password
-# only getattr()s username/email off whatever user object it is handed.
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',

@@ -7,10 +7,11 @@ from .auth import current_user
 PUBLIC_API_PATHS = {
     '/api/health',
     '/api/auth/status',
-    '/api/auth/signup',
-    '/api/auth/login',
     '/api/auth/token',
 }
+# allauth's headless API: sign-up, login, email verification, password reset.
+# It does its own authentication checks per endpoint.
+PUBLIC_API_PREFIXES = ('/api/_allauth/',)
 
 
 def api_guard(get_response):
@@ -31,7 +32,9 @@ def api_guard(get_response):
             if request.auth_scheme == 'bearer':
                 request._dont_enforce_csrf_checks = True
 
-            if request.path not in PUBLIC_API_PATHS and user is None:
+            if user is None and not (
+                request.path in PUBLIC_API_PATHS or request.path.startswith(PUBLIC_API_PREFIXES)
+            ):
                 return JsonResponse({'error': 'Authentication required'}, status=401)
         return get_response(request)
 
