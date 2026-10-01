@@ -7,6 +7,68 @@
   background: #f8fafc;
 }
 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  margin: -0.25rem 0 0;
+  padding: 0.4rem 0.5rem 0.65rem;
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 0.5rem 0.5rem 0 0;
+  background: none;
+  font: inherit;
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.brand:hover {
+  background: #eef2ff;
+}
+
+.brand:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+.brandBadge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.45rem;
+  background: #6366f1;
+  color: #fff;
+}
+
+.brandBadge svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.brandName {
+  flex: 1;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.brandOpen {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  color: #94a3b8;
+  transition: color 0.15s;
+}
+
+.brand:hover .brandOpen {
+  color: #6366f1;
+}
+
 .form {
   display: flex;
   flex-direction: column;

@@ -11,6 +11,32 @@ const PENDING_KEY = 'pendingJob'
 const EMPTY = { name: '', company: '', salary: '', link: '' }
 const MAX_LINK = 500 // backend/jobs/validators.py
 
+function openBoard() {
+  chrome.tabs.create({ url: chrome.runtime.getURL('board.html') })
+}
+
+/**
+ * The panel's own title bar. Chrome draws its side-panel header itself and
+ * doesn't let extensions handle clicks on it, so this is the brand you can click
+ * to get to the board.
+ */
+function BrandHeader() {
+  return (
+    <button type="button" className={styles.brand} onClick={openBoard} title="Open your full board in a new tab">
+      <span className={styles.brandBadge} aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="2" />
+          <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+        </svg>
+      </span>
+      <span className={styles.brandName}>Job Tracker</span>
+      <svg className={styles.brandOpen} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+      </svg>
+    </button>
+  )
+}
+
 function SettingsRow({ onChanged }) {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState('')
@@ -141,16 +167,6 @@ function SaveForm({ onSaved }) {
 
   return (
     <form className={styles.form} onSubmit={submit}>
-      <div className={styles.row}>
-        <button
-          type="button"
-          className={styles.secondaryBtn}
-          onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('board.html') })}
-        >
-          Open full board
-        </button>
-      </div>
-
       {note && <p className={styles.note}>{note}</p>}
 
       <div className={styles.field}>
@@ -248,6 +264,7 @@ export default function SavePanel({ onApiBaseChanged }) {
 
   return (
     <div className={styles.panel}>
+      <BrandHeader />
       <SaveForm onSaved={() => setSaved((n) => n + 1)} />
       <RecentSaves refreshKey={saved} />
       <SettingsRow onChanged={onApiBaseChanged} />
