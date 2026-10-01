@@ -11,6 +11,9 @@
     "storage",
     "sidePanel"
   ],
+  "optional_permissions": [
+    "tabs"
+  ],
   "host_permissions": [
     "http://localhost:5001/*"
   ],

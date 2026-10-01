@@ -4,8 +4,8 @@
  * It is terminated after ~30s idle, so nothing here is cached in a module
  * variable -- the token and API host are read from chrome.storage on every use.
  *
- * The side panel and context menu build a draft from tab metadata only (title,
- * URL, and any text you had selected when you opened the menu). The one place
+ * The context menu builds a draft from tab metadata only (title, URL, and any
+ * text you had selected when you opened the menu). The one place
  * that reads page content is the LinkedIn content script (linkedin.js), which
  * sends the title and company it finds there to this worker to save.
  */
@@ -186,21 +186,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.sidePanel.open({ tabId: sender.tab.id })
       .then(() => sendResponse({ ok: true }))
       .catch((error) => sendResponse({ ok: false, error: String(error.message) }))
-    return true
-  }
-
-  if (message?.type === 'read-active-tab') {
-    chrome.tabs.query({ active: true, currentWindow: true })
-      .then(([tab]) => {
-        const job = draftFromTab(tab)
-        // activeTab is granted by the click that opened the panel and lapses on
-        // navigation, so url/title can come back empty once you browse on. The
-        // context menu re-grants it on every click, hence the hint.
-        if (!job.link) throw new Error('Use right-click → Save job to tracker on the page.')
-        return job
-      })
-      .then((job) => sendResponse({ ok: true, job }))
-      .catch(fail)
     return true
   }
 

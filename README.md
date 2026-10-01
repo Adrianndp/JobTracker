@@ -165,10 +165,11 @@ unpacked** → pick `frontend/dist-extension`.
 - `manifest.json` carries a `key` so that ID stays the same when the folder
   moves. It is derived from `ext-key.pem`, which is **not** in git -- keep it if
   you want the ID to survive a fresh checkout.
-- **Saving a job:** right-click a posting → *Save job to tracker*, or open the
-  side panel and press *Use current tab*. The form is prefilled from the tab's
-  title and URL -- or from the text you had selected, so you can highlight the
-  real job title first -- and you edit it before anything is saved.
+- **Saving a job:** right-click a posting → *Save job to tracker*. The side
+  panel's form is prefilled from the tab's title and URL -- or from the text you
+  had selected, so you can highlight the real job title first -- and you edit it
+  before anything is saved. To fill in a job by hand, open the side panel; *Use
+  current link* next to the Link field copies the tab's URL in.
 - **LinkedIn:** job pages get an **+ Add to Job Tracker** button next to Apply /
   Save. One click saves the title, company and link to *To Be Applied*; move it
   to *Applied* on the board once you've applied. The link is stored as

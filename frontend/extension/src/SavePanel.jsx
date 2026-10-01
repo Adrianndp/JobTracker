@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { useAuthStatus, useJobs, useUnauthorized } from '@app/api'
 import { safeHref } from '@app/lib/safeUrl'
 import LoginPage from '@app/components/LoginPage'
+import { canonicalLinkedInLink, linkedInJobId } from './linkedinUrl'
 import { defaultApiBase, ensureHostPermission, getApiBase, setApiBase } from './settings'
 import { clearToken, getCachedToken, setToken } from './tokenStore'
 import styles from './SavePanel.module.css'
 
 const PENDING_KEY = 'pendingJob'
 const EMPTY = { name: '', company: '', salary: '', link: '' }
+const MAX_LINK = 500 // backend/jobs/validators.py
 
 function SettingsRow({ onChanged }) {
   const [open, setOpen] = useState(false)
@@ -68,7 +70,7 @@ function SaveForm({ onSaved }) {
 
   const adopt = useCallback((job, reason) => {
     setForm({ ...EMPTY, ...job })
-    setNote(reason && reason !== 'review' ? reason : '')
+    setNote(reason || '')
   }, [])
 
   // A save started from the context menu parks the draft in storage and opens
@@ -91,16 +93,28 @@ function SaveForm({ onSaved }) {
     return () => { cancelled = true; chrome.storage.onChanged.removeListener(listener) }
   }, [adopt])
 
-  const useCurrentTab = async () => {
+  // Chrome hides a tab's URL unless we hold the "tabs" permission or activeTab,
+  // and activeTab (granted by the toolbar click that opened the panel) lapses as
+  // soon as the tab navigates -- so with the panel left open while you browse,
+  // every new page would be unreadable. "tabs" is optional and asked for here,
+  // once: request() resolves straight away without a prompt when already
+  // granted. It has to be the first await, while the click still counts as a
+  // user gesture.
+  const useCurrentLink = async () => {
     setError('')
-    setBusy(true)
-    try {
-      const res = await chrome.runtime.sendMessage({ type: 'read-active-tab' })
-      if (res?.ok) adopt(res.job, 'review')
-      else setError(res?.error || 'Could not read the current tab.')
-    } finally {
-      setBusy(false)
+    const granted = await chrome.permissions.request({ permissions: ['tabs'] }).catch(() => false)
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab?.url) {
+      setError(granted
+        ? 'Can\'t read this tab\'s link.'
+        : 'Allow the extension to read tab links to use this.')
+      return
     }
+    // A LinkedIn search URL carries the open posting as ?currentJobId=; store the
+    // posting itself, as the LinkedIn button does.
+    const id = linkedInJobId(tab.url)
+    const link = id ? canonicalLinkedInLink(id) : tab.url
+    setForm((f) => ({ ...f, link: link.slice(0, MAX_LINK) }))
   }
 
   const submit = async (e) => {
@@ -128,9 +142,6 @@ function SaveForm({ onSaved }) {
   return (
     <form className={styles.form} onSubmit={submit}>
       <div className={styles.row}>
-        <button type="button" className={styles.secondaryBtn} onClick={useCurrentTab} disabled={busy}>
-          Use current tab
-        </button>
         <button
           type="button"
           className={styles.secondaryBtn}
@@ -155,7 +166,12 @@ function SaveForm({ onSaved }) {
         <input id="salary" className={styles.input} value={form.salary} onChange={set('salary')} />
       </div>
       <div className={styles.field}>
-        <label className={styles.label} htmlFor="link">Link</label>
+        <div className={styles.labelRow}>
+          <label className={styles.label} htmlFor="link">Link</label>
+          <button type="button" className={styles.inlineBtn} onClick={useCurrentLink}>
+            Use current link
+          </button>
+        </div>
         <input id="link" className={styles.input} value={form.link} onChange={set('link')} />
         {href && <a className={styles.preview} href={href} target="_blank" rel="noopener noreferrer">Open posting</a>}
       </div>
