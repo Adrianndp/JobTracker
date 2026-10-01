@@ -1,5 +1,5 @@
 /**
- * Content script for LinkedIn: puts an "Add to Job Tracker" button next to a
+ * Content script for LinkedIn: puts a "Save to Job Tracker" button next to a
  * posting's Apply / Save buttons (see trackerButton.js).
  *
  * It reads only the title and company of the posting on screen.
@@ -44,9 +44,9 @@ function readPosting() {
 }
 
 /**
- * Where our button goes: right after Save, or after Apply if there's no Save.
- * Returns the node to insert after -- the child of the button row that holds the
- * target, so we sit in the row rather than inside LinkedIn's button wrapper.
+ * Our button goes on its own line under the Apply / Save row: inside the row it
+ * runs out of the job pane when Apply is wide ("Apply on company website").
+ * Returns that row, which the button is inserted after.
  */
 function findAnchor() {
   const main = document.querySelector('main') || document.body
@@ -57,31 +57,23 @@ function findAnchor() {
   let row = apply.parentElement
   for (let depth = 0; row && row !== main && depth < 5; depth += 1, row = row.parentElement) {
     const save = first(SAVE_SELECTORS, row) || buttonByLabel(SAVE_LABEL, row)
-    if (save) return childOf(row, save)
+    if (save) return row
   }
-  return childOf(apply.parentElement, apply)
+  return rowOf(apply)
 }
 
-function childOf(row, el) {
+/** The row around el: its nearest ancestor holding more than el's own wrappers. */
+function rowOf(el) {
   let node = el
-  while (node.parentElement && node.parentElement !== row) node = node.parentElement
-  return node
+  while (node.parentElement?.childElementCount === 1) node = node.parentElement
+  return node.parentElement || node
 }
 
+// Sized like LinkedIn's Apply / Save pills; colours come from trackerButton.js.
+// The spacing sits on the button: LinkedIn's reset zeroes margins on the host.
 const STYLE = `
-  :host { display: inline-flex; align-items: center; margin-left: 8px; vertical-align: middle; }
-  button {
-    font: inherit; font-size: 16px; font-weight: 600; line-height: 20px;
-    padding: 6px 16px; min-height: 32px; border-radius: 24px; cursor: pointer;
-    color: #057642; background: transparent; border: 1px solid #057642;
-    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
-  }
-  button:hover { background: rgba(5, 118, 66, 0.08); box-shadow: inset 0 0 0 1px #057642; }
-  button:disabled { cursor: default; opacity: 0.7; }
-  button.saved { color: #fff; background: #057642; }
-  button.saved:hover { background: #04603a; }
-  button.error { color: #b24020; border-color: #b24020; }
-  button.error:hover { background: rgba(178, 64, 32, 0.08); box-shadow: inset 0 0 0 1px #b24020; }
+  :host { display: flex; }
+  button { margin-top: 8px; height: 40px; padding: 0 16px 0 9px; font-size: 16px; font-weight: 600; }
 `
 
 mountTrackerButton({ findAnchor, readPosting, style: STYLE })

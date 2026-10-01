@@ -1,5 +1,5 @@
 /**
- * Content script for XING: puts an "Add to Job Tracker" button next to a
+ * Content script for XING: puts a "Save to Job Tracker" button next to a
  * posting's "Einfach bewerben" / "Job merken" buttons (see trackerButton.js).
  *
  * It reads only the title and company of the posting on screen.
@@ -56,32 +56,27 @@ function readPosting() {
   }
 }
 
-/** Right after "Job merken", or after "Einfach bewerben" if there's no bookmark. */
+/**
+ * Our button goes on its own line under the "Einfach bewerben" / "Job merken"
+ * row: XING gives every button in that row an equal share of its width, which
+ * leaves too little room for ours. Returns that row, which the button is
+ * inserted after.
+ */
 function findAnchor() {
   const header = document.querySelector(HEADER_SELECTOR)
   if (!header) return null
-  return first(SAVE_SELECTORS, header) || buttonByLabel(SAVE_LABEL, header)
+  const button = first(SAVE_SELECTORS, header) || buttonByLabel(SAVE_LABEL, header)
     || first(APPLY_SELECTORS, header) || buttonByLabel(APPLY_LABEL, header)
+  return button?.parentElement || null
 }
 
-// On wide screens XING lays the row out as equal-width flex items
-// (flex-basis: 100% on every child), so the host takes a share like its
-// neighbours and the button fills it.
+// Sized like XING's "Job merken" button; colours come from trackerButton.js.
 const STYLE = `
-  :host { display: flex; flex: 0 1 100%; min-width: 0; }
+  :host { display: flex; }
   button {
-    font: inherit; font-size: 16px; font-weight: 700; line-height: 18px;
-    width: 100%; min-height: 42px; padding: 0 21px; border-radius: 50px; cursor: pointer;
-    color: #1d2124; background: transparent; border: 2px solid #1d2124;
-    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-top: 12px; height: 42px; padding: 0 20px 0 12px; font-size: 16px; font-weight: 700;
+    border-width: 2px; --outline: currentColor;
   }
-  button:hover { background: rgba(29, 33, 36, 0.06); }
-  button:disabled { cursor: default; opacity: 0.7; }
-  button.saved { color: #1d2124; background: #c6f16d; border-color: #c6f16d; }
-  button.saved:hover { background: #b5e05c; border-color: #b5e05c; }
-  button.error { color: #b24020; border-color: #b24020; }
-  button.error:hover { background: rgba(178, 64, 32, 0.08); }
 `
 
 mountTrackerButton({ findAnchor, readPosting, style: STYLE })

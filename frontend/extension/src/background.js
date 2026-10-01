@@ -31,7 +31,7 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: MENU_ID,
-      title: 'Save job to tracker',
+      title: 'Save to Job Tracker',
       contexts: ['page', 'link', 'selection'],
     })
   })

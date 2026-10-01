@@ -1,5 +1,5 @@
 /**
- * The job boards that get an "Add to Job Tracker" button. Each shows the same
+ * The job boards that get a "Save to Job Tracker" button. Each shows the same
  * posting under several URLs, so saves store one canonical link per posting and
  * lookups compare on the board's posting id.
  *

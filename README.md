@@ -11,7 +11,7 @@ extension that saves a posting from a job page in one click.
 - PostgreSQL database via the Django ORM
 - Chrome extension: save the page you are on to your board, and view the full
   board in a tab
-- One-click "Add to Job Tracker" button on LinkedIn and XING job postings
+- One-click "Save to Job Tracker" button on LinkedIn and XING job postings
 
 
 
@@ -46,7 +46,7 @@ frontend/extension/
   board.html        the full kanban, reusing App.jsx
   sidepanel.html    save-this-page panel
   src/background.js MV3 service worker: context menu and API calls
-  src/linkedin.js   content script: "Add to Job Tracker" button on LinkedIn job pages
+  src/linkedin.js   content script: "Save to Job Tracker" button on LinkedIn job pages
   src/xing.js       content script: the same button on XING job pages
   src/trackerButton.js  the button and page watcher both content scripts share
 ```
@@ -167,17 +167,17 @@ unpacked** → pick `frontend/dist-extension`.
 - `manifest.json` carries a `key` so that ID stays the same when the folder
   moves. It is derived from `ext-key.pem`, which is **not** in git -- keep it if
   you want the ID to survive a fresh checkout.
-- **Saving a job:** right-click a posting → *Save job to tracker*. The side
+- **Saving a job:** right-click a posting → *Save to Job Tracker*. The side
   panel's form is prefilled from the tab's title and URL -- or from the text you
   had selected, so you can highlight the real job title first -- and you edit it
   before anything is saved. To fill in a job by hand, open the side panel; *Use
   current link* next to the Link field copies the tab's URL in.
-- **LinkedIn:** job pages get an **+ Add to Job Tracker** button next to Apply /
+- **LinkedIn:** job pages get a **Save to Job Tracker** button next to Apply /
   Save. One click saves the title, company and link to *To Be Applied*; move it
   to *Applied* on the board once you've applied. The link is stored as
   `https://www.linkedin.com/jobs/view/<id>/`, so a posting opened from search
   results and from its own page is recognised as the same job: the button shows
-  *In tracker · <column>* instead of saving it twice, and clicking it opens the
+  *Tracked · <column>* instead of saving it twice, and clicking it opens the
   board.
 - **XING:** job pages (`/jobs/<slug>-<id>`) get the same button, after
   *Einfach bewerben* / *Job merken*. The link is stored as
