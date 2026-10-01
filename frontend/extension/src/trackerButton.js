@@ -14,7 +14,7 @@
 
 import { postingFromUrl } from './jobBoards'
 
-const HOST_ATTR = 'data-job-tracker'
+export const HOST_ATTR = 'data-job-tracker'
 
 const STATUS_LABELS = {
   to_be_applied: 'To Be Applied',
@@ -52,6 +52,7 @@ const LOGO = [
   ['path', { d: 'M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2' }],
 ]
 const CHECK = [['path', { d: 'M5 12.5l4.5 4.5L19 7.5' }]]
+const PLUS = [['path', { d: 'M12 5v14M5 12h14' }]]
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
 /**
@@ -81,7 +82,7 @@ const BASE_STYLE = `
     display: grid; place-items: center; color: #fff; background: ${BRAND};
   }
   .badge svg { width: 14px; height: 14px; }
-  .badge .check, .badge .spinner, .saved .badge .logo, .busy .badge .logo { display: none; }
+  .badge .check, .badge .plus, .badge .spinner, .saved .badge .logo, .busy .badge .logo { display: none; }
   .saved .badge .check { display: block; }
   .busy .badge .spinner { display: block; }
   .spinner {
@@ -145,7 +146,9 @@ function createButton(style) {
   const button = document.createElement('button')
   button.type = 'button'
   button.append(
-    el('span', { class: 'badge' }, [icon('logo', LOGO), icon('check', CHECK), el('span', { class: 'spinner' })]),
+    el('span', { class: 'badge' }, [
+      icon('logo', LOGO), icon('plus', PLUS), icon('check', CHECK), el('span', { class: 'spinner' }),
+    ]),
     el('span', { class: 'label' }),
     el('span', { class: 'detail' }),
   )
@@ -286,12 +289,15 @@ function lineAfter(row) {
 /**
  * Keep a tracker button on the page whenever a posting is open.
  *
- * findAnchor() returns the site's Apply / Save row -- the button goes on its
- * own line under it (see lineAfter) -- or null while the posting's buttons
- * haven't rendered yet. readPosting() returns { name, company }
- * for the posting on screen. style is the CSS for the shadow root.
+ * findAnchor() returns null while the posting's buttons haven't rendered yet,
+ * and otherwise depends on placement:
+ * - 'below': the site's Apply / Save row; the button goes on its own line
+ *   under it (see lineAfter).
+ * - 'inline': the item in the row that the button goes right after.
+ * readPosting() returns { name, company } for the posting on screen. style is
+ * the CSS for the shadow root.
  */
-export function mountTrackerButton({ findAnchor, readPosting, style }) {
+export function mountTrackerButton({ findAnchor, readPosting, style, placement = 'below' }) {
   const tracker = new TrackerButton(style, readPosting)
 
   function sync() {
@@ -300,16 +306,18 @@ export function mountTrackerButton({ findAnchor, readPosting, style }) {
       tracker.host.remove()
       return
     }
-    const row = findAnchor()
-    if (!row) return
-    const anchor = lineAfter(row)
+    const found = findAnchor()
+    if (!found) return
+    const anchor = placement === 'inline' ? found : lineAfter(found)
     if (anchor.nextSibling !== tracker.host) {
       anchor.after(tracker.host)
-      // A parent that spaces its children with gap already puts room above us.
-      const gap = parseFloat(getComputedStyle(anchor.parentElement).rowGap) || 0
-      tracker.host.toggleAttribute('data-gapped', gap > 0)
-      // Match a row of small buttons (LinkedIn's redesigned job page uses 32px).
-      tracker.host.toggleAttribute('data-compact', row.getBoundingClientRect().height < 36)
+      if (placement === 'below') {
+        // A parent that spaces its children with gap already puts room above us.
+        const gap = parseFloat(getComputedStyle(anchor.parentElement).rowGap) || 0
+        tracker.host.toggleAttribute('data-gapped', gap > 0)
+        // Match a row of small buttons (LinkedIn's redesigned job page uses 32px).
+        tracker.host.toggleAttribute('data-compact', found.getBoundingClientRect().height < 36)
+      }
     }
     tracker.bind(posting.link, location.href)
   }

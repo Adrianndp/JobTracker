@@ -12,13 +12,14 @@
  * a sticky copy that appears on scroll. The button goes in the header only.
  */
 
-import { buttonByLabel, first, mountTrackerButton, text } from './trackerButton'
+import { buttonByLabel, first, HOST_ATTR, mountTrackerButton, text } from './trackerButton'
 
 const HEADER_SELECTOR = '[data-testid="job-details-header"]'
 const TITLE_SELECTORS = ['[data-testid="job-details-title"] h1', `${HEADER_SELECTOR} h1`]
 const COMPANY_SELECTORS = ['[data-testid="job-details-company-info-name"]']
 const SAVE_SELECTORS = ['[data-testid="job-details-bookmark-button"]']
 const APPLY_SELECTORS = ['[data-testid="apply-button"]']
+const MORE_SELECTOR = '[data-testid="job-details-more-menu-button"]'
 // German and English UI; the test ids above are tried first.
 const SAVE_LABEL = /^(job merken|gemerkt|save job|saved)\b/i
 const APPLY_LABEL = /^(einfach bewerben|jetzt bewerben|bewerben|easy apply|apply)\b/i
@@ -57,26 +58,41 @@ function readPosting() {
 }
 
 /**
- * Our button goes on its own line under the "Einfach bewerben" / "Job merken"
- * row: XING gives every button in that row an equal share of its width, which
- * leaves too little room for ours. Returns that row, which the button is
- * inserted after.
+ * Our button goes at the right end of the "Einfach bewerben" / "Job merken" /
+ * "Suchauftrag" row, but before the "more" menu (shown only on small screens),
+ * so that stays last. Returns the item to insert after.
  */
 function findAnchor() {
   const header = document.querySelector(HEADER_SELECTOR)
   if (!header) return null
   const button = first(SAVE_SELECTORS, header) || buttonByLabel(SAVE_LABEL, header)
     || first(APPLY_SELECTORS, header) || buttonByLabel(APPLY_LABEL, header)
-  return button?.parentElement || null
+  const row = button?.parentElement
+  if (!row) return null
+  const items = [...row.children].filter((item) => !item.hasAttribute(HOST_ATTR)
+    && !item.matches(MORE_SELECTOR) && !item.querySelector(MORE_SELECTOR))
+  return items.at(-1) || null
 }
 
-// Sized like XING's "Job merken" button; colours come from trackerButton.js.
+// Sized like XING's buttons; colours come from trackerButton.js.
+// On wide screens XING gives every item in the row an equal share of its width
+// (flex-basis: 100% on each), so the host takes one like its neighbours. Below
+// 740px XING shrinks Job merken / Suchauftrag to round icon buttons, and ours
+// follows suit: just the badge, with a plus while there's nothing saved yet.
 const STYLE = `
-  :host { display: flex; }
+  :host { display: flex; flex: 0 1 100%; min-width: 0; }
   button {
-    margin-top: 12px; height: 42px; padding: 0 20px 0 12px; font-size: 16px; font-weight: 700;
+    width: 100%; height: 42px; padding: 0 16px 0 10px; font-size: 16px; font-weight: 700;
     border-width: 2px; --outline: currentColor;
+  }
+  @media (max-width: 739.98px) {
+    :host { flex: none; }
+    button { width: 42px; padding: 0; gap: 0; }
+    .label, .detail { display: none; }
+    .badge .logo { display: none; }
+    .badge .plus { display: block; }
+    .saved .badge .plus, .busy .badge .plus { display: none; }
   }
 `
 
-mountTrackerButton({ findAnchor, readPosting, style: STYLE })
+mountTrackerButton({ findAnchor, readPosting, style: STYLE, placement: 'inline' })
