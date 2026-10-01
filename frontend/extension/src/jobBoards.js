@@ -1,27 +1,44 @@
 /**
- * LinkedIn shows the same posting under several URLs -- /jobs/view/<id>,
- * /jobs/view/<slug>-<id>, and /jobs/search/?currentJobId=<id> when it is open in
- * the right-hand pane of a results list. The numeric id is what identifies the
- * posting, so saves use one canonical link and lookups compare on the id.
+ * The job boards that get an "Add to Job Tracker" button. Each shows the same
+ * posting under several URLs, so saves store one canonical link per posting and
+ * lookups compare on the board's posting id.
+ *
+ * LinkedIn: /jobs/view/<id>, /jobs/view/<slug>-<id>, and
+ *   /jobs/search/?currentJobId=<id> when the posting is open in the right-hand
+ *   pane of a results list. Canonical link: /jobs/view/<id>/.
+ * XING: /jobs/<slug>-<id>, often with tracking parameters. The slug can't be
+ *   dropped -- /jobs/<id> is treated as a search -- so the canonical link is the
+ *   path without query or hash.
  */
 
-const VIEW_RE = /\/jobs\/view\/(?:[^/]*?-)?(\d+)(?:[/?#]|$)/
+const LINKEDIN_VIEW_RE = /\/jobs\/view\/(?:[^/]*?-)?(\d+)(?:[/?#]|$)/
+const XING_JOB_RE = /^\/jobs\/([^/]+-(\d+))\/?$/
 
-/** The posting id in a LinkedIn URL, or null. */
-export function linkedInJobId(href) {
+function linkedIn(url) {
+  if (!/(^|\.)linkedin\.com$/.test(url.hostname)) return null
+  const fromQuery = url.searchParams.get('currentJobId')
+  const id = url.pathname.match(LINKEDIN_VIEW_RE)?.[1]
+    || (/^\d+$/.test(fromQuery || '') ? fromQuery : null)
+  return id && { board: 'linkedin', id, link: `https://www.linkedin.com/jobs/view/${id}/` }
+}
+
+function xing(url) {
+  if (!/(^|\.)xing\.com$/.test(url.hostname)) return null
+  const match = url.pathname.match(XING_JOB_RE)
+  return match && { board: 'xing', id: match[2], link: `https://www.xing.com/jobs/${match[1]}` }
+}
+
+/** { board, id, link } for a posting on a supported job board, or null. */
+export function postingFromUrl(href) {
   let url
   try {
     url = new URL(href)
   } catch {
     return null
   }
-  if (!/(^|\.)linkedin\.com$/.test(url.hostname)) return null
-  const fromPath = url.pathname.match(VIEW_RE)
-  if (fromPath) return fromPath[1]
-  const fromQuery = url.searchParams.get('currentJobId')
-  return /^\d+$/.test(fromQuery || '') ? fromQuery : null
+  return linkedIn(url) || xing(url) || null
 }
 
-export function canonicalLinkedInLink(id) {
-  return `https://www.linkedin.com/jobs/view/${id}/`
+export function samePosting(a, b) {
+  return a.board === b.board && a.id === b.id
 }

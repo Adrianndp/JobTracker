@@ -11,7 +11,7 @@ extension that saves a posting from a job page in one click.
 - PostgreSQL database via the Django ORM
 - Chrome extension: save the page you are on to your board, and view the full
   board in a tab
-- One-click "Add to Job Tracker" button on LinkedIn job postings
+- One-click "Add to Job Tracker" button on LinkedIn and XING job postings
 
 
 
@@ -47,6 +47,8 @@ frontend/extension/
   sidepanel.html    save-this-page panel
   src/background.js MV3 service worker: context menu and API calls
   src/linkedin.js   content script: "Add to Job Tracker" button on LinkedIn job pages
+  src/xing.js       content script: the same button on XING job pages
+  src/trackerButton.js  the button and page watcher both content scripts share
 ```
 
 ## Accounts
@@ -177,11 +179,18 @@ unpacked** → pick `frontend/dist-extension`.
   results and from its own page is recognised as the same job: the button shows
   *In tracker · <column>* instead of saving it twice, and clicking it opens the
   board.
-- **What the extension reads:** only `linkedin.js`, on `www.linkedin.com`, reads
-  page content -- the title and company of the posting on screen. Everywhere
-  else a draft is built from tab metadata alone, and there is no `scripting`
-  permission. LinkedIn changes its markup often; if the button stops appearing,
-  the selectors at the top of `extension/src/linkedin.js` are what to update.
+- **XING:** job pages (`/jobs/<slug>-<id>`) get the same button, after
+  *Einfach bewerben* / *Job merken*. The link is stored as
+  `https://www.xing.com/jobs/<slug>-<id>` with tracking parameters stripped (the
+  slug stays: XING treats `/jobs/<id>` as a search), and a posting counts as
+  already saved when its numeric id matches.
+- **What the extension reads:** only `linkedin.js` on `www.linkedin.com` and
+  `xing.js` on `www.xing.com` read page content -- the title and company of the
+  posting on screen. Everywhere else a draft is built from tab metadata alone,
+  and there is no `scripting` permission. Both sites change their markup; if the
+  button stops appearing, the selectors at the top of
+  `extension/src/linkedin.js` / `xing.js` are what to update. URL handling for
+  both lives in `extension/src/jobBoards.js`.
 - **Changing the API host:** the side panel's footer. Pointing at an HTTPS host
   triggers an optional-permission prompt for that origin.
 - **Revoking a device:** `DELETE /api/auth/tokens/<id>` (list them with

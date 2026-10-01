@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useAuthStatus, useJobs, useUnauthorized } from '@app/api'
 import { safeHref } from '@app/lib/safeUrl'
 import LoginPage from '@app/components/LoginPage'
-import { canonicalLinkedInLink, linkedInJobId } from './linkedinUrl'
+import { postingFromUrl } from './jobBoards'
 import { defaultApiBase, ensureHostPermission, getApiBase, setApiBase } from './settings'
 import { clearToken, getCachedToken, setToken } from './tokenStore'
 import styles from './SavePanel.module.css'
@@ -110,10 +110,10 @@ function SaveForm({ onSaved }) {
         : 'Allow the extension to read tab links to use this.')
       return
     }
-    // A LinkedIn search URL carries the open posting as ?currentJobId=; store the
-    // posting itself, as the LinkedIn button does.
-    const id = linkedInJobId(tab.url)
-    const link = id ? canonicalLinkedInLink(id) : tab.url
+    // Job-board URLs carry search state and tracking parameters (a LinkedIn
+    // search URL holds the open posting as ?currentJobId=); store the posting's
+    // canonical link, as the job-board buttons do.
+    const link = postingFromUrl(tab.url)?.link || tab.url
     setForm((f) => ({ ...f, link: link.slice(0, MAX_LINK) }))
   }
 

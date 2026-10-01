@@ -5,12 +5,12 @@
  * variable -- the token and API host are read from chrome.storage on every use.
  *
  * The context menu builds a draft from tab metadata only (title, URL, and any
- * text you had selected when you opened the menu). The one place
- * that reads page content is the LinkedIn content script (linkedin.js), which
- * sends the title and company it finds there to this worker to save.
+ * text you had selected when you opened the menu). The only places that read
+ * page content are the job-board content scripts (linkedin.js, xing.js), which
+ * send the title and company they find there to this worker to save.
  */
 
-import { canonicalLinkedInLink, linkedInJobId } from './linkedinUrl'
+import { postingFromUrl, samePosting } from './jobBoards'
 import { getApiBase } from './settings'
 import { clearToken, readToken } from './tokenStore'
 
@@ -90,10 +90,13 @@ function createJob(job) {
   })
 }
 
-/** The saved job for a LinkedIn posting id, or null. */
-async function findLinkedInJob(id) {
+/** The saved job for a job-board posting ({ board, id }), or null. */
+async function findBoardJob(posting) {
   const jobs = await apiFetch('/api/jobs')
-  return jobs.find((job) => job.link && linkedInJobId(job.link) === id) || null
+  return jobs.find((job) => {
+    const saved = job.link && postingFromUrl(job.link)
+    return saved && samePosting(saved, posting)
+  }) || null
 }
 
 /**
@@ -130,7 +133,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   handOffToPanel(draftFromTab(tab, info), tab?.id, 'Add the company, then save.')
 })
 
-// Messages from the side panel / board page, and the LinkedIn content script.
+// Messages from the side panel / board page, and the job-board content scripts.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const fail = (error) => sendResponse({ ok: false, error: String(error.message), code: error.code })
 
@@ -145,19 +148,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true
   }
 
-  // From the LinkedIn button. The link is rebuilt from the posting id here rather
-  // than taken from the page, so every save of a posting stores the same URL.
-  if (message?.type === 'save-linkedin-job') {
-    const id = String(message.id || '')
-    if (!/^\d+$/.test(id)) {
-      sendResponse({ ok: false, error: 'Not a LinkedIn job page.' })
+  // From a job-board button. The link is the posting's canonical one, rebuilt
+  // from the page URL here, so every save of a posting stores the same URL.
+  if (message?.type === 'save-board-job') {
+    const posting = postingFromUrl(String(message.href || ''))
+    if (!posting) {
+      sendResponse({ ok: false, error: 'Not a job posting page.' })
       return undefined
     }
-    findLinkedInJob(id)
+    findBoardJob(posting)
       .then((existing) => existing || createJob({
         name: tidy(message.name, MAX.name),
         company: tidy(message.company, MAX.company),
-        link: canonicalLinkedInLink(id),
+        link: tidy(posting.link, MAX.link),
       }).then((job) => {
         badge('OK', '#16a34a')
         chrome.runtime.sendMessage({ type: 'job-created', job }).catch(() => {})
@@ -168,8 +171,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true
   }
 
-  if (message?.type === 'find-linkedin-job') {
-    findLinkedInJob(String(message.id || ''))
+  if (message?.type === 'find-board-job') {
+    const posting = postingFromUrl(String(message.href || ''))
+    if (!posting) {
+      sendResponse({ ok: true, job: null })
+      return undefined
+    }
+    findBoardJob(posting)
       .then((job) => sendResponse({ ok: true, job }))
       .catch(fail)
     return true
@@ -180,7 +188,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return undefined
   }
 
-  // Sent from a click on the LinkedIn button; Chrome treats a message sent from a
+  // Sent from a click on a job-board button; Chrome treats a message sent from a
   // content script's click handler as the user gesture sidePanel.open() needs.
   if (message?.type === 'open-panel' && sender.tab?.id != null) {
     chrome.sidePanel.open({ tabId: sender.tab.id })
