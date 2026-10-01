@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "build:ext": "vite build -c vite.extension.config.js && vite build -c vite.extension.sw.config.js",
+    "build:ext": "vite build -c vite.extension.config.js && vite build -c vite.extension.sw.config.js && vite build -c vite.extension.content.config.js",
     "build:all": "npm run build && npm run build:ext"
   },
   "dependencies": {

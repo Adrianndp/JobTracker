@@ -16,7 +16,7 @@ export default defineConfig({
   },
   build: {
     outDir: '../dist-extension',
-    emptyOutDir: true,          // only this one: the other two builds add to it
+    emptyOutDir: true,          // only this one: the other builds add to it
     rollupOptions: {
       input: {
         board: fileURLToPath(new URL('./extension/board.html', import.meta.url)),

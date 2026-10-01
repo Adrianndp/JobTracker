@@ -11,6 +11,7 @@ extension that saves a posting from a job page in one click.
 - PostgreSQL database via the Django ORM
 - Chrome extension: save the page you are on to your board, and view the full
   board in a tab
+- One-click "Add to Job Tracker" button on LinkedIn job postings
 
 
 
@@ -45,6 +46,7 @@ frontend/extension/
   board.html        the full kanban, reusing App.jsx
   sidepanel.html    save-this-page panel
   src/background.js MV3 service worker: context menu and API calls
+  src/linkedin.js   content script: "Add to Job Tracker" button on LinkedIn job pages
 ```
 
 ## Accounts
@@ -167,10 +169,18 @@ unpacked** → pick `frontend/dist-extension`.
   side panel and press *Use current tab*. The form is prefilled from the tab's
   title and URL -- or from the text you had selected, so you can highlight the
   real job title first -- and you edit it before anything is saved.
-- **The extension never reads page content.** There is no content script and no
-  `scripting` permission; a draft is built from tab metadata alone. That keeps
-  it off every job board's terms of service and means the only host permission
-  is the API itself.
+- **LinkedIn:** job pages get an **+ Add to Job Tracker** button next to Apply /
+  Save. One click saves the title, company and link to *To Be Applied*; move it
+  to *Applied* on the board once you've applied. The link is stored as
+  `https://www.linkedin.com/jobs/view/<id>/`, so a posting opened from search
+  results and from its own page is recognised as the same job: the button shows
+  *In tracker · <column>* instead of saving it twice, and clicking it opens the
+  board.
+- **What the extension reads:** only `linkedin.js`, on `www.linkedin.com`, reads
+  page content -- the title and company of the posting on screen. Everywhere
+  else a draft is built from tab metadata alone, and there is no `scripting`
+  permission. LinkedIn changes its markup often; if the button stops appearing,
+  the selectors at the top of `extension/src/linkedin.js` are what to update.
 - **Changing the API host:** the side panel's footer. Pointing at an HTTPS host
   triggers an optional-permission prompt for that origin.
 - **Revoking a device:** `DELETE /api/auth/tokens/<id>` (list them with
