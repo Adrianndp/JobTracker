@@ -40,6 +40,13 @@ is done; this plan is about **identity** and **billing**.
 3. Email provider: **Resend** (Phase 2).
 4. Google sign-in: **later**, not at launch (Phase 3).
 
+### Answers (2026-10-01) -- replace earlier ones where they differ
+
+5. Payment provider: **Paddle** (merchant of record), not Stripe. Phase 4 was built on it.
+6. Free tier: **30 active applications** (To Be Applied / Applied / In Interview); finished
+   columns don't count. Replaces "Free = 5 jobs".
+7. Price: €7/month and €19 per 3 months, both recurring Paddle prices.
+
 ---
 
 ## Phase 0 — Groundwork ✅ done 2026-09-24
@@ -123,8 +130,9 @@ tests pass on Postgres.
 > `setup_required`, `reset_password` command), `email` now required, extension signs in with
 > email and must be verified. `allauth.mfa` was removed again until Phase 3 (its tables unapplied).
 > Checked end to end in Chrome against Postgres.
-> **Still open:** account deletion endpoint, per-user job cap / write rate (2.3), a Resend
-> key + verified sending domain for real mail.
+> **Still open:** a Resend key + verified sending domain for real mail.
+> Done 2026-10-01: account deletion (`DELETE /api/auth/account`, password re-check, cancels a
+> live subscription first), 5,000-job cap and 60 creates/minute per user (2.3).
 
 ### 2.1 Backend
 
@@ -191,7 +199,24 @@ covered by the web login.
 `form-action 'none'`; it must allow `'self'` for the redirect form post (both in
 `config/security.py` and `frontend/nginx.conf`).
 
-## Phase 4 — Stripe subscriptions
+## Phase 4 — Subscriptions ✅ code done 2026-10-01, with Paddle instead of Stripe
+
+> Built against **Paddle Billing** (decision 5), hand-rolled over the stdlib like the Stripe
+> plan below: `billing` app with `BillingAccount` (`paddle_customer_id`, `subscription_id`,
+> `status`, …, plus `complimentary`) and `PaddleEvent` for idempotency; `/api/billing/status`,
+> `checkout` (creates a transaction; Paddle.js overlay opens it), `portal` (customer portal
+> session), `webhook` (HMAC on the raw body, re-fetches the subscription). `custom_data`
+> carries a signed user id so a forged checkout can't attach to someone else's account.
+> `plan_for` implements decision 6; `past_due` keeps Pro for 14 days. Frontend: Account dialog
+> (plan, usage meter, upgrade, manage billing, delete account), plan chip in the header, 402
+> banner. 37 new backend tests.
+> Then (same day): public pricing page, a 4-step upgrade dialog (plan → review with Paddle's
+> localised VAT preview → pay → done), and *Plan & billing* in Account (status, next payment,
+> card, invoices) read live from Paddle. 9 more tests.
+> **Still open (needs your Paddle account):** sandbox product/prices, keys, default payment
+> link + domain approval, webhook destination; then one real sandbox purchase end to end.
+> The CSP now allows `cdn.paddle.com` and `*.paddle.com` frames -- confirm nothing is blocked
+> in that sandbox run. Sections 4.1–4.5 below are the original Stripe design, kept for reference.
 
 ### 4.1 Model: new `billing` app
 
@@ -245,12 +270,89 @@ Env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID(S)`.
 
 ## Phase 5 — Launch checklist
 
-- Privacy policy + terms (required by Stripe and Google sign-in).
+> Done 2026-10-01: `npm run build:ext:store` (needs `VITE_API_BASE=https://…`; fixed host,
+> no `key`, no optional hosts), optional Sentry (`SENTRY_DSN`), `WEB_CONCURRENCY` for gunicorn,
+> `scripts/backup-db.sh` with restore steps. Still yours: hosting, domain, Sentry project,
+> uptime monitor, cron for the backup, real env values.
+
+- Privacy policy + terms (required by Stripe and Google sign-in). For a German audience that
+  means **Impressum**, **Datenschutzerklärung** and **AGB**, plus data processing agreements (AVV)
+  with the host, Resend and the payment provider. See Phase 6.2.
+- **Production extension build:** the API host defaults to `localhost:5001` and `host_permissions`
+  lists it; both must point at the real domain before publishing. Drop
+  `optional_host_permissions: https://*/*` unless a self-hosted API host is a real use case -- it
+  draws extra Chrome Web Store review.
 - Error tracking (Sentry) and uptime check on `/api/health`.
 - Daily `pg_dump` off the server, plus one test restore.
 - `HTTPS=1`, real `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`; publish the extension so its ID is fixed.
 - Gunicorn workers sized to CPU; Postgres connection count stays under `max_connections`
   (`CONN_MAX_AGE` is already 60 s).
+
+## Phase 6 — Go to market (added 2026-10-01)
+
+The tracker plus one-click save is a crowded category with strong free options (Teal, Huntr,
+Simplify, Notion templates, spreadsheets). As it stands it would earn close to nothing per user.
+What can sell is a tracker **built for German-speaking job seekers**: the boards they use, German UI,
+EU hosting.
+
+### 6.1 Decisions to revisit before Phase 4
+
+- **Free tier.** "Free = 5 jobs" (Answers, 2026-09-24) is too tight to evaluate the product --
+  people apply to 20–100 jobs, and competitors' free tiers are much larger. Proposal: free up to
+  **~30 active applications** on LinkedIn and XING; Pro unlocks unlimited applications, all boards,
+  reminders and stats. Only `billing.plan_for` (4.3) changes.
+- **Price.** Proposal: **€7/month or €19 for 3 months**. Job seekers churn once hired (typically
+  1–4 months), so sell passes or months, not years. Benchmarks to re-check before launch: Teal+
+  ~$29/month, Huntr Pro ~$40/month -- both priced on AI résumé help, not tracking.
+- **Payment provider.** Selling to EU consumers means EU VAT through the OSS scheme. A merchant of
+  record (**Paddle** or **Lemon Squeezy**) collects and files VAT for you; plain Stripe leaves that to
+  you (Stripe Tax helps but you remain the seller). Decide before writing Phase 4 -- the
+  checkout / portal / webhook shape is similar, but the SDK and event names differ.
+
+### 6.2 Legal (Germany / EU)
+
+> Drafts in `frontend/public/legal/` (Impressum, Datenschutz, AGB), linked from the login page,
+> sign-up and the board footer. Placeholders are highlighted; they need your details and a
+> review. With Paddle as merchant of record, the withdrawal-right consent is Paddle's checkout's job.
+
+- **Impressum** on the site, **Datenschutzerklärung**, **AGB**.
+- **Withdrawal right (Widerrufsrecht):** EU consumers get 14 days to cancel. Checkout needs the
+  explicit "start now, I lose my withdrawal right" consent, or refunds must be honoured.
+- **AVV** (data processing agreements) with the host, Resend and the payment provider.
+- **Account deletion** (Phase 2 open item) is a GDPR requirement, not a nice-to-have.
+- **Job-board terms:** LinkedIn's User Agreement forbids tools that read its pages; Teal and Huntr
+  do it openly, but the risk is ours. Keep the content scripts reading only what's on screen, only
+  on a click, and never in bulk.
+
+### 6.3 Chrome Web Store
+
+- Developer account ($5), listing with screenshots of the LinkedIn / XING button and the board,
+  privacy policy link, single-purpose statement and a justification per permission.
+- The store assigns the published extension's ID and, as far as I know, rejects a manifest with a
+  `key` field -- strip `key` from the store build (keep it for unpacked dev builds), then set
+  production `CORS_ALLOWED_ORIGINS=chrome-extension://<store id>`.
+
+### 6.4 Product: what makes it worth paying for (in order)
+
+1. **German job boards** competitors cover poorly: StepStone, Indeed.de, Arbeitsagentur Jobbörse
+   -- each one a content script plus a case in `jobBoards.js`, like XING.
+   **StepStone done 2026-10-01** (`stepstone.js`, stepstone.de); Indeed.de and Jobbörse next.
+2. **Follow-up reminders:** "no answer in 10 days -- follow up?", interview dates with a calendar
+   (.ics) export.
+3. **Per-application notes and timeline:** contacts, salary discussed, interview questions.
+4. **Stats:** reply rate, which sources lead to interviews.
+5. **Later:** AI-tailored Anschreiben per posting -- where the market's money is, but it carries a
+   per-use cost and needs its own pricing.
+
+### 6.5 Launch
+
+- Landing page with pricing, German and English.
+- Support email address and a short FAQ.
+- Positioning: "Made for the German job market, hosted in the EU, your data is never sold."
+
+**Exit criteria:** a stranger finds the landing page, installs the extension from the Chrome Web
+Store, saves jobs from LinkedIn / XING / StepStone, upgrades, pays VAT-correctly, and can cancel
+or delete their account themselves.
 
 ## Order and size
 
@@ -262,3 +364,4 @@ Env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID(S)`.
 | 3 | MFA / Google | medium | Phase 2 |
 | 4 | Stripe | medium | Phase 1 (not 2 or 3) |
 | 5 | launch | small | all |
+| 6 | go to market: legal, store listing, German boards, reminders | large (ongoing) | 6.1 before Phase 4; rest after Phase 5 |

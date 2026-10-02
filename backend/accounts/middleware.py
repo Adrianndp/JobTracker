@@ -8,6 +8,10 @@ PUBLIC_API_PATHS = {
     '/api/health',
     '/api/auth/status',
     '/api/auth/token',
+    # Paddle's servers; authenticated by the HMAC signature (billing/views.py)
+    '/api/billing/webhook',
+    # The pricing page, shown before sign-up
+    '/api/billing/plans',
 }
 # allauth's headless API: sign-up, login, email verification, password reset.
 # It does its own authentication checks per endpoint.

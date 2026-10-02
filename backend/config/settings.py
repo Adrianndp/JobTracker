@@ -85,6 +85,7 @@ INSTALLED_APPS = [
     'allauth.headless',
     'accounts',
     'jobs',
+    'billing',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
@@ -158,7 +159,6 @@ else:
         }
     }
 
-# Timestamps are stored as naive UTC, like the Flask version did
 USE_TZ = False
 TIME_ZONE = 'UTC'
 USE_I18N = False
@@ -228,6 +228,37 @@ CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS')
 # The API only ever takes small JSON documents, and a content script will be
 # posting text scraped from arbitrary pages.
 DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024
+
+# Billing: Paddle (merchant of record -- it sells the subscription and files EU
+# VAT). Off until the API key, client-side token and at least one price are set;
+# with billing off there are no plan limits (development, self-hosting).
+PADDLE_ENVIRONMENT = os.environ.get('PADDLE_ENVIRONMENT') or 'sandbox'
+if PADDLE_ENVIRONMENT not in ('sandbox', 'production'):
+    raise ImproperlyConfigured("PADDLE_ENVIRONMENT must be 'sandbox' or 'production'")
+PADDLE_API_KEY = os.environ.get('PADDLE_API_KEY') or ''
+PADDLE_CLIENT_TOKEN = os.environ.get('PADDLE_CLIENT_TOKEN') or ''
+PADDLE_WEBHOOK_SECRET = os.environ.get('PADDLE_WEBHOOK_SECRET') or ''
+# Plan key -> Paddle price id (pri_...). Labels are in billing/plans.py.
+PADDLE_PRICES = {
+    key: value for key, value in (
+        ('monthly', os.environ.get('PADDLE_PRICE_MONTHLY')),
+        ('quarterly', os.environ.get('PADDLE_PRICE_QUARTERLY')),
+    ) if value
+}
+BILLING_ENABLED = bool(PADDLE_API_KEY and PADDLE_CLIENT_TOKEN and PADDLE_PRICES)
+
+# Errors to Sentry when SENTRY_DSN is set. No request bodies or user details:
+# job data and emails stay out of a third party's logs.
+if os.environ.get('SENTRY_DSN'):
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=os.environ['SENTRY_DSN'],
+        environment=os.environ.get('SENTRY_ENVIRONMENT') or 'production',
+        send_default_pii=False,
+        max_request_body_size='never',
+        traces_sample_rate=0,
+    )
 
 PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.PBKDF2PasswordHasher',

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
+import { ApiError } from '../api'
 import styles from './AddJobModal.module.css'
 
-export default function AddJobModal({ onClose, onAdd, onSave, job }) {
+export default function AddJobModal({ onClose, onAdd, onSave, onUpgrade, job }) {
   const isEdit = Boolean(job)
   const [form, setForm] = useState({
     name: job?.name ?? '',
@@ -11,6 +12,7 @@ export default function AddJobModal({ onClose, onAdd, onSave, job }) {
     had_interview: job?.had_interview ?? false,
   })
   const [error, setError] = useState('')
+  const [limitHit, setLimitHit] = useState(false)
   const [loading, setLoading] = useState(false)
   const firstInput = useRef(null)
 
@@ -38,8 +40,10 @@ export default function AddJobModal({ onClose, onAdd, onSave, job }) {
     setLoading(true)
     try {
       isEdit ? await onSave(job.id, form) : await onAdd(form)
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err) {
+      // The server's message for anything it rejected (free limit, bad link, ...)
+      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.')
+      setLimitHit(err instanceof ApiError && err.code === 'plan_limit')
       setLoading(false)
     }
   }
@@ -142,7 +146,17 @@ export default function AddJobModal({ onClose, onAdd, onSave, job }) {
             </div>
           )}
 
-          {error && <p className={styles.error}>{error}</p>}
+          {error && (
+            <p className={styles.error}>
+              {error}
+              {limitHit && onUpgrade && (
+                <>
+                  {' '}
+                  <button type="button" className={styles.errorLink} onClick={onUpgrade}>See plans</button>
+                </>
+              )}
+            </p>
+          )}
 
           <div className={styles.actions}>
             <button type="button" className={styles.cancelBtn} onClick={onClose}>

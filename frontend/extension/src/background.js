@@ -6,8 +6,9 @@
  *
  * The context menu builds a draft from tab metadata only (title, URL, and any
  * text you had selected when you opened the menu). The only places that read
- * page content are the job-board content scripts (linkedin.js, xing.js), which
- * send the title and company they find there to this worker to save.
+ * page content are the job-board content scripts (linkedin.js, xing.js,
+ * stepstone.js), which send the title and company they find there to this
+ * worker to save.
  */
 
 import { postingFromUrl, samePosting } from './jobBoards'
@@ -73,7 +74,12 @@ async function apiFetch(path, init = {}) {
     throw notSignedIn('Session expired')
   }
   const data = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`)
+  if (!res.ok) {
+    const error = new Error(data?.error || `Request failed (${res.status})`)
+    // e.g. 'plan_limit' (402): the free plan's active applications are used up
+    if (data?.code) error.code = data.code
+    throw error
+  }
   return data
 }
 
@@ -185,6 +191,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message?.type === 'open-board') {
     chrome.tabs.create({ url: chrome.runtime.getURL('board.html') })
+    return undefined
+  }
+
+  // The checkout runs on the website: extension pages can't load Paddle.js.
+  // ?upgrade opens the account dialog there once you're signed in.
+  if (message?.type === 'open-upgrade') {
+    getApiBase().then((base) => chrome.tabs.create({ url: `${base}/?upgrade=1` }))
     return undefined
   }
 

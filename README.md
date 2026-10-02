@@ -11,7 +11,8 @@ extension that saves a posting from a job page in one click.
 - PostgreSQL database via the Django ORM
 - Chrome extension: save the page you are on to your board, and view the full
   board in a tab
-- One-click "Save to Job Tracker" button on LinkedIn and XING job postings
+- One-click "Save to Job Tracker" button on LinkedIn, XING and StepStone job postings
+- Free plan (30 active applications) and Pro via Paddle; account deletion
 
 
 
@@ -33,14 +34,23 @@ backend/
     validators.py   link scheme + length validation
     views.py        /api/jobs CRUD, scoped to the signed-in user
     management/commands/seed.py
+  billing/
+    plans.py        plan_for(user): what Free and Pro allow (the only place that decides)
+    paddle.py       the Paddle API calls and webhook signature check, over the stdlib
+    subscriptions.py  keeps BillingAccount in step with Paddle
+    views.py        /api/billing/{plans,status,preview,details,invoices/<id>,checkout,portal,webhook}
+    management/commands/billing_comp.py
   config/
     cors.py         CORS allowlist for the extension origin
     security.py     CSP and friends for the HTML Django serves
 frontend/src/
   App.jsx           auth gate, board state, API calls
   api.ts            fetch helper + hooks (shared with the extension)
-  lib/              transport.ts (api base + auth scheme), safeUrl.ts
-  components/       LoginPage, KanbanBoard, KanbanColumn, JobCard, AddJobModal, CompanyFilter
+  lib/              transport.ts (api base + auth scheme), safeUrl.ts, paddle.ts (checkout)
+  components/       LoginPage, KanbanBoard, KanbanColumn, JobCard, AddJobModal, CompanyFilter,
+                    PricingPage, UpgradeFlow (plan → review → pay → done),
+                    AccountModal (plan & billing, invoices, delete account), LegalLinks
+frontend/public/legal/  Impressum, Datenschutz, AGB (drafts with placeholders)
 frontend/extension/
   public/           manifest.json, icons
   board.html        the full kanban, reusing App.jsx
@@ -48,7 +58,9 @@ frontend/extension/
   src/background.js MV3 service worker: context menu and API calls
   src/linkedin.js   content script: "Save to Job Tracker" button on LinkedIn job pages
   src/xing.js       content script: the same button on XING job pages
-  src/trackerButton.js  the button and page watcher both content scripts share
+  src/stepstone.js  content script: the same button on StepStone job pages
+  src/trackerButton.js  the button and page watcher the content scripts share
+scripts/backup-db.sh  nightly pg_dump for the docker-compose deployment
 ```
 
 ## Accounts
@@ -79,6 +91,54 @@ handles sign-up, login, email verification and password reset for the web app.
   Redis (`REDIS_URL`) in production for atomic counters.
 - **Admin tasks:** `python manage.py createsuperuser` and `changepassword <username>` are
   Django's own.
+- **Deleting an account:** *Account* → *Delete account*, with the password re-checked
+  (`DELETE /api/auth/account`). Jobs, devices and email addresses go with it; a live
+  subscription is cancelled at Paddle first, and if that fails the account is kept.
+
+## Plans and billing
+
+[Paddle](https://www.paddle.com/) sells Pro as merchant of record: it runs the checkout,
+charges VAT for the buyer's country, files it, and sends invoices. We store only which Paddle
+customer and subscription belong to which user, and the subscription's status.
+
+- **Free:** up to 30 *active* applications (To Be Applied, Applied, In Interview). Rejected,
+  Offer and Ghosted don't count. Over the limit, adding a job (or moving one back into an
+  active column) answers `402` with `code: "plan_limit"`; nothing is ever deleted.
+  **Pro:** no limit. Every account also has a hard cap of 5,000 jobs and 60 new jobs a minute.
+- **Billing is off** until `PADDLE_API_KEY`, `PADDLE_CLIENT_TOKEN` and a price are set, and
+  with it off there are no plan limits (development, self-hosting).
+- **Your own account:** `python manage.py billing_comp you@example.com` gives Pro without
+  paying (`--off` takes it back).
+- **Setting up Paddle (sandbox first, at sandbox-vendors.paddle.com):**
+  1. Create a product with two recurring prices: €7 every month, €19 every 3 months. Put their
+     `pri_…` ids in `PADDLE_PRICE_MONTHLY` / `PADDLE_PRICE_QUARTERLY` (labels on the buttons
+     are in `backend/billing/plans.py`).
+  2. *Developer tools → Authentication:* an API key (`PADDLE_API_KEY`) and a client-side token
+     (`PADDLE_CLIENT_TOKEN`, `test_…` in sandbox).
+  3. *Checkout settings:* set the default payment link to your site's URL and approve the
+     domain (Paddle requires it before a checkout opens).
+  4. *Notifications:* a destination `https://<your host>/api/billing/webhook` for the
+     `subscription.*` and `transaction.completed` events; its secret key goes in
+     `PADDLE_WEBHOOK_SECRET`. Locally, expose port 5001 with a tunnel (e.g. `ngrok http 5001`)
+     and point a sandbox destination at it.
+  5. When it all works, switch to `PADDLE_ENVIRONMENT=production` with live keys and prices.
+- **Where it shows up:** the plan chip in the header ("28/30") and every limit message lead to
+  the **pricing page** (Free vs Pro, monthly / 3-month switch, FAQ), also reachable signed out
+  from the login screen or `/?pricing`. *Upgrade to Pro* opens a four-step dialog: choose the
+  period, review (price with VAT for the buyer's country from Paddle's pricing preview,
+  renewal date, how cancelling works), pay in Paddle's overlay, done. Pro users find
+  *Account → Plan & billing*: status, next payment, card, invoice downloads, *Manage billing*.
+  Links: `/?upgrade=1` opens the pricing page after sign-in, `/?upgrade=monthly` the review step.
+- **How a purchase flows:** the stepper asks the backend for a Paddle transaction (signed with
+  the user's id), Paddle.js opens the checkout over the page, and the webhook updates the
+  account; the stepper polls until Pro shows up. Webhooks are verified on the raw body, run once
+  per `event_id`, and re-fetch the subscription from Paddle so late or out-of-order events
+  can't roll it back. Billing details and invoices are read live from Paddle when the account
+  dialog opens. *Manage billing* opens Paddle's customer portal (cancel, card, invoices).
+- **From the extension:** its pages can't load Paddle.js, so *Upgrade* there (and the job
+  buttons' *Free limit reached · Upgrade*) opens the website at `/?upgrade=1`.
+- **Legal pages:** `frontend/public/legal/` holds drafts of the Impressum, Datenschutzerklärung
+  and AGB with highlighted placeholders. Fill them in and have them reviewed before launch.
 
 ## Environment variables
 
@@ -96,6 +156,13 @@ handles sign-up, login, email verification and password reset for the web app.
 | `RESEND_API_KEY` | unset (console) | Sends account email through Resend's SMTP. Unset prints emails to the backend console. |
 | `DEFAULT_FROM_EMAIL` | `Job Tracker <noreply@localhost>` | Sender for account email, e.g. `Job Tracker <noreply@yourdomain.com>` (domain verified in Resend). |
 | `DB_CONN_MAX_AGE` | `60` | Seconds to keep a Postgres connection open between requests. |
+| `PADDLE_ENVIRONMENT` | `sandbox` | `sandbox` or `production`. |
+| `PADDLE_API_KEY` | unset (billing off) | Server-side Paddle API key. |
+| `PADDLE_CLIENT_TOKEN` | unset | Paddle.js client-side token (safe to expose; it's sent to the browser). |
+| `PADDLE_WEBHOOK_SECRET` | unset | The notification destination's secret; webhooks without a valid signature get `400`. |
+| `PADDLE_PRICE_MONTHLY`, `PADDLE_PRICE_QUARTERLY` | unset | Paddle price ids (`pri_…`); either one enables that plan. |
+| `SENTRY_DSN` | unset | Sends server errors to Sentry, without request bodies or user details. `SENTRY_ENVIRONMENT` names the environment. |
+| `WEB_CONCURRENCY` | `2` | Gunicorn workers in the Docker image, about 2 × CPU cores. |
 | `REDIS_URL` | unset (DB cache) | `redis://host:6379/0`. Backs the login throttle and the session cache; docker-compose sets it. Without it the DB cache is used, whose counters aren't atomic across workers. |
 
 ## Run with Docker
@@ -112,6 +179,11 @@ docker compose up --build
   ```bash
   docker compose exec db pg_dump -U jobtracker jobtracker > backup.sql
   ```
+
+- **Nightly backups:** `scripts/backup-db.sh` dumps into `backups/` and keeps 14 days; set
+  `BACKUP_COPY` to copy each dump off the server. The script's header has the cron line and
+  the steps to test a restore.
+- **Uptime:** point a monitor (UptimeRobot, Better Stack, …) at `https://<your host>/api/health`.
 
 Stop with:
 
@@ -154,6 +226,17 @@ npm install
 npm run build:ext        # or build:all to build the web app too
 ```
 
+For the **Chrome Web Store**, build with the production API host baked in:
+
+```bash
+VITE_API_BASE=https://jobs.example.com npm run build:ext:store
+cd dist-extension && zip -r ../job-tracker-extension.zip . && cd ..
+```
+
+That build has `host_permissions` for that host only, no `optional_host_permissions`, no
+API-host setting in the panel, and no `key` (the store assigns the ID; set
+`CORS_ALLOWED_ORIGINS=chrome-extension://<store id>` once you have it).
+
 Then in Chrome: **chrome://extensions** → enable Developer mode → **Load
 unpacked** → pick `frontend/dist-extension`.
 
@@ -184,15 +267,18 @@ unpacked** → pick `frontend/dist-extension`.
   `https://www.xing.com/jobs/<slug>-<id>` with tracking parameters stripped (the
   slug stays: XING treats `/jobs/<id>` as a search), and a posting counts as
   already saved when its numeric id matches.
-- **What the extension reads:** only `linkedin.js` on `www.linkedin.com` and
-  `xing.js` on `www.xing.com` read page content -- the title and company of the
-  posting on screen. Everywhere else a draft is built from tab metadata alone,
-  and there is no `scripting` permission. Both sites change their markup; if the
-  button stops appearing, the selectors at the top of
-  `extension/src/linkedin.js` / `xing.js` are what to update. URL handling for
-  both lives in `extension/src/jobBoards.js`.
-- **Changing the API host:** the side panel's footer. Pointing at an HTTPS host
-  triggers an optional-permission prompt for that origin.
+- **StepStone:** job pages (`/stellenangebote--<slug>--<id>-inline.html`) get the
+  button after *Speichern*. The link is stored without tracking parameters, and
+  a posting counts as already saved when its numeric id matches.
+- **What the extension reads:** only `linkedin.js` on `www.linkedin.com`,
+  `xing.js` on `www.xing.com` and `stepstone.js` on `www.stepstone.de` read page
+  content -- the title and company of the posting on screen. Everywhere else a
+  draft is built from tab metadata alone, and there is no `scripting`
+  permission. These sites change their markup; if the button stops appearing,
+  the selectors at the top of the board's script in `extension/src/` are what to
+  update. URL handling for all of them lives in `extension/src/jobBoards.js`.
+- **Changing the API host:** the side panel's footer (development builds only).
+  Pointing at an HTTPS host triggers an optional-permission prompt for that origin.
 - **Revoking a device:** `DELETE /api/auth/tokens/<id>` (list them with
   `GET /api/auth/tokens`). A password change or reset revokes every token and
   session at once.

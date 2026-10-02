@@ -1,8 +1,10 @@
 from django.http import HttpResponse, JsonResponse
 from django.views import View
 
+from accounts import ratelimit
 from accounts.auth import current_user
 from accounts.models import utcnow
+from billing.plans import ACTIVE_STATUSES, active_limit_error
 from config.views import read_json
 
 from .models import VALID_STATUSES, Job
@@ -15,6 +17,11 @@ from .validators import (
     clean_text,
 )
 
+# Whatever the plan, one account can't fill the database, nor script the
+# endpoint into a write loop. Far above anything a person saving jobs reaches.
+MAX_JOBS_PER_USER = 5000
+CREATE_LIMIT, CREATE_WINDOW = 60, 60
+
 
 class JobListView(View):
     def get(self, request):
@@ -22,6 +29,15 @@ class JobListView(View):
         return JsonResponse([j.to_dict() for j in jobs], safe=False)
 
     def post(self, request):
+        user = current_user(request)
+        allowed, retry = ratelimit.hit('jobcreate', user.pk, CREATE_LIMIT, CREATE_WINDOW)
+        if not allowed:
+            return JsonResponse({'error': f'Too many new jobs at once. Try again in {retry} seconds.'},
+                                status=429)
+        if Job.objects.filter(user=user).count() >= MAX_JOBS_PER_USER:
+            return JsonResponse({'error': f'An account holds at most {MAX_JOBS_PER_USER} jobs. '
+                                          'Delete old ones to add more.'}, status=400)
+
         data = read_json(request)
         name = clean_text(data.get('name'), MAX_NAME)
         company = clean_text(data.get('company'), MAX_COMPANY)
@@ -32,9 +48,12 @@ class JobListView(View):
         link, error = clean_link(data.get('link'))
         if error:
             return JsonResponse({'error': error}, status=400)
+        limit_error = active_limit_error(user)
+        if limit_error:
+            return JsonResponse(limit_error, status=402)
 
         job = Job.objects.create(
-            user=current_user(request),
+            user=user,
             name=name,
             company=company,
             link=link,
@@ -62,6 +81,11 @@ class JobDetailView(View):
         data = read_json(request)
 
         if data.get('status') in VALID_STATUSES:
+            # Reviving a finished job takes an active place like a new one
+            if data['status'] in ACTIVE_STATUSES and job.status not in ACTIVE_STATUSES:
+                limit_error = active_limit_error(job.user)
+                if limit_error:
+                    return JsonResponse(limit_error, status=402)
             job.status = data['status']
             if data['status'] == 'applied':
                 job.applied_date = utcnow()

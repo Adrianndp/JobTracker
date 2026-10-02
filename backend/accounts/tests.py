@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import timedelta
+from unittest import mock
 
 from allauth.account.models import EmailAddress
 from django.core import mail
@@ -293,6 +294,77 @@ class CsrfTests(AuthTestCase):
     def test_token_endpoint_is_exempt(self):
         r = api(self.c, 'post', '/api/auth/token', {'email': 'a@example.com', 'password': PASSWORD})
         self.assertEqual(r.status_code, 201)
+
+
+class AccountDeletionTests(AuthTestCase):
+    def delete(self, client, password=PASSWORD, **extra):
+        return api(client, 'delete', '/api/auth/account', {'password': password}, **extra)
+
+    def test_delete_removes_the_account_and_everything_in_it(self):
+        from jobs.models import Job
+        Job.objects.create(user=self.user, name='Role', company='Co')
+        raw = self.bearer()
+        c = Client()
+        self.login(c)
+        self.assertEqual(self.delete(c).status_code, 204)
+        self.assertFalse(User.objects.filter(pk=self.user.pk).exists())
+        self.assertFalse(Job.objects.exists())
+        self.assertFalse(ApiToken.objects.exists())
+        self.assertFalse(EmailAddress.objects.exists())
+        # The session is gone, and so is the extension's token
+        self.assertFalse(c.get('/api/auth/status').json()['authenticated'])
+        self.assertEqual(Client().get('/api/jobs', HTTP_AUTHORIZATION=f'Bearer {raw}').status_code, 401)
+
+    def test_wrong_password_keeps_the_account(self):
+        c = Client()
+        self.login(c)
+        r = self.delete(c, password='wrong-password-123')
+        self.assertEqual(r.status_code, 403)  # not 401: that would sign the SPA out
+        self.assertTrue(User.objects.filter(pk=self.user.pk).exists())
+
+    def test_password_guesses_are_throttled(self):
+        c = Client()
+        self.login(c)
+        for _ in range(5):
+            self.delete(c, password='wrong-password-123')
+        self.assertEqual(self.delete(c).status_code, 429)
+        self.assertTrue(User.objects.filter(pk=self.user.pk).exists())
+
+    def test_needs_sign_in(self):
+        self.assertEqual(self.delete(Client()).status_code, 401)
+
+    def test_works_with_the_extension_token(self):
+        r = self.delete(Client(), HTTP_AUTHORIZATION=f'Bearer {self.bearer()}')
+        self.assertEqual(r.status_code, 204)
+
+    def test_session_delete_needs_csrf(self):
+        c = Client(enforce_csrf_checks=True)
+        c.get('/api/auth/status')
+        self.login(c, HTTP_X_CSRFTOKEN=c.cookies['csrftoken'].value)
+        self.assertEqual(self.delete(c).status_code, 403)
+        self.assertTrue(User.objects.filter(pk=self.user.pk).exists())
+
+    def test_live_subscription_is_cancelled_first(self):
+        from billing import paddle
+        from billing.models import BillingAccount
+        BillingAccount.objects.create(user=self.user, status='active', subscription_id='sub_1')
+        c = Client()
+        self.login(c)
+        with override_settings(PADDLE_API_KEY='k'), \
+                mock.patch.object(paddle, 'cancel_subscription_now') as cancel:
+            self.assertEqual(self.delete(c).status_code, 204)
+        cancel.assert_called_once_with('sub_1')
+
+    def test_account_is_kept_if_the_subscription_cannot_be_cancelled(self):
+        from billing import paddle
+        from billing.models import BillingAccount
+        BillingAccount.objects.create(user=self.user, status='active', subscription_id='sub_1')
+        c = Client()
+        self.login(c)
+        with override_settings(PADDLE_API_KEY='k'), \
+                mock.patch.object(paddle, 'cancel_subscription_now', side_effect=paddle.PaddleError('down')):
+            self.assertEqual(self.delete(c).status_code, 502)
+        self.assertTrue(User.objects.filter(pk=self.user.pk).exists())
 
 
 class ContentTypeGuardTests(AuthTestCase):

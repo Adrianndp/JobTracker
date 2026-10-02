@@ -3,3 +3,4 @@ gunicorn==23.0.0
 psycopg[binary]==3.3.6
 django-allauth==65.19.4
 redis==8.1.0
+sentry-sdk==2.71.0

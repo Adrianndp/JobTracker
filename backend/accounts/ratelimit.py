@@ -61,3 +61,23 @@ def record_failure(bucket, key, window):
 
 def clear(bucket, key):
     cache.delete(_key(bucket, key))
+
+
+def hit(bucket, key, limit, window):
+    """Count one request in a fixed window. (allowed, retry_after).
+
+    For plain request-rate limits, where every call counts rather than only
+    failures. add() + incr() so Redis counts atomically across workers.
+    """
+    now = time.time()
+    start = int(now // window) * window
+    name = _key(bucket, f'{key}:{start}')
+    cache.add(name, 0, window + 1)
+    try:
+        count = cache.incr(name)
+    except ValueError:  # expired between add() and incr()
+        cache.set(name, 1, window + 1)
+        count = 1
+    if count > limit:
+        return False, int(start + window - now) + 1
+    return True, 0

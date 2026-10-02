@@ -6,6 +6,7 @@ urlpatterns = [
     path('api/health', views.HealthView.as_view()),
     path('api/auth/', include('accounts.urls')),
     path('api/_allauth/', include('allauth.headless.urls')),
+    path('api/billing/', include('billing.urls')),
     path('api/', include('jobs.urls')),
     re_path(r'^api/', views.ApiNotFoundView.as_view()),
     # Serve React in production (must be last — catches everything not matched above)

@@ -9,10 +9,13 @@
  * XING: /jobs/<slug>-<id>, often with tracking parameters. The slug can't be
  *   dropped -- /jobs/<id> is treated as a search -- so the canonical link is the
  *   path without query or hash.
+ * StepStone: /stellenangebote--<slug>--<id>-inline.html, plus tracking
+ *   parameters. Canonical link: the same path without query or hash.
  */
 
 const LINKEDIN_VIEW_RE = /\/jobs\/view\/(?:[^/]*?-)?(\d+)(?:[/?#]|$)/
 const XING_JOB_RE = /^\/jobs\/([^/]+-(\d+))\/?$/
+const STEPSTONE_JOB_RE = /^\/stellenangebote--.+--(\d+)-inline\.html$/
 
 function linkedIn(url) {
   if (!/(^|\.)linkedin\.com$/.test(url.hostname)) return null
@@ -28,6 +31,12 @@ function xing(url) {
   return match && { board: 'xing', id: match[2], link: `https://www.xing.com/jobs/${match[1]}` }
 }
 
+function stepStone(url) {
+  if (!/(^|\.)stepstone\.de$/.test(url.hostname)) return null
+  const match = url.pathname.match(STEPSTONE_JOB_RE)
+  return match && { board: 'stepstone', id: match[1], link: `https://www.stepstone.de${url.pathname}` }
+}
+
 /** { board, id, link } for a posting on a supported job board, or null. */
 export function postingFromUrl(href) {
   let url
@@ -36,7 +45,7 @@ export function postingFromUrl(href) {
   } catch {
     return null
   }
-  return linkedIn(url) || xing(url) || null
+  return linkedIn(url) || xing(url) || stepStone(url) || null
 }
 
 export function samePosting(a, b) {

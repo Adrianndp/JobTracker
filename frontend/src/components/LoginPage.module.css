@@ -1,6 +1,8 @@
 .page {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
@@ -203,4 +205,19 @@
   border: 1px solid #c7d2fe;
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
+}
+
+.terms {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.terms a {
+  color: #64748b;
+}
+
+.legal {
+  max-width: 400px;
 }

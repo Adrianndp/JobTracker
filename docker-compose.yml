@@ -43,6 +43,15 @@ services:
       REDIS_URL: redis://redis:6379/0
       RESEND_API_KEY: ${RESEND_API_KEY:-}                # empty → account emails print to the backend log
       DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-}
+      # Billing via Paddle; off (and no plan limits) until key, token and a price are set
+      PADDLE_ENVIRONMENT: ${PADDLE_ENVIRONMENT:-sandbox}     # sandbox | production
+      PADDLE_API_KEY: ${PADDLE_API_KEY:-}
+      PADDLE_CLIENT_TOKEN: ${PADDLE_CLIENT_TOKEN:-}
+      PADDLE_WEBHOOK_SECRET: ${PADDLE_WEBHOOK_SECRET:-}
+      PADDLE_PRICE_MONTHLY: ${PADDLE_PRICE_MONTHLY:-}
+      PADDLE_PRICE_QUARTERLY: ${PADDLE_PRICE_QUARTERLY:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}                        # empty → no error tracking
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}             # gunicorn workers, ~2 x CPU cores
     volumes:
       - ./backend/instance:/app/instance   # secret_key
     ports:

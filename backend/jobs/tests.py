@@ -1,5 +1,7 @@
 import json
 
+from unittest import mock
+
 from django.core.cache import cache
 from django.test import Client, TestCase
 
@@ -127,6 +129,21 @@ class LengthCapTests(JobApiTestCase):
     def test_whitespace_is_collapsed(self):
         r = self.as_alice('post', '/api/jobs', {'name': '  Senior\n\tEngineer  ', 'company': 'C'})
         self.assertEqual(r.json()['name'], 'Senior Engineer')
+
+
+class AbuseLimitTests(JobApiTestCase):
+    def test_create_rate_is_limited_per_user(self):
+        with mock.patch('jobs.views.CREATE_LIMIT', 3):
+            codes = [self.as_alice('post', '/api/jobs', {'name': 'n', 'company': 'c'}).status_code
+                     for _ in range(4)]
+            self.assertEqual(codes, [201, 201, 201, 429])
+            # Someone else's quota is untouched
+            self.assertEqual(self.as_bob('post', '/api/jobs', {'name': 'n', 'company': 'c'}).status_code, 201)
+
+    def test_jobs_per_account_are_capped(self):
+        Job.objects.bulk_create(Job(user=self.alice, name='n', company='c', status='rejected') for _ in range(3))
+        with mock.patch('jobs.views.MAX_JOBS_PER_USER', 3):
+            self.assertEqual(self.as_alice('post', '/api/jobs', {'name': 'n', 'company': 'c'}).status_code, 400)
 
 
 class ValidatorUnitTests(TestCase):

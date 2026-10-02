@@ -1,0 +1,79 @@
+:root {
+  --text: #0f172a;
+  --muted: #475569;
+  --line: #e2e8f0;
+  --accent: #4f46e5;
+  --bg: #f8fafc;
+  --card: #fff;
+  --todo-bg: #fef3c7;
+  --todo-text: #92400e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --line: #334155;
+    --accent: #a5b4fc;
+    --bg: #0f172a;
+    --card: #111827;
+    --todo-bg: #422006;
+    --todo-text: #fcd34d;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 2rem 1rem 3rem;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+@media (max-width: 560px) {
+  main { padding: 1.25rem; }
+}
+
+h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 0.25rem; }
+h2 { font-size: 1.1rem; margin: 2rem 0 0.5rem; }
+p, li { color: var(--muted); }
+a { color: var(--accent); }
+.stand { font-size: 0.85rem; margin-top: 0; }
+.back { display: inline-block; margin-bottom: 1.25rem; font-size: 0.9rem; }
+
+/* Placeholders and the draft notice: remove both before publishing. */
+.todo {
+  background: var(--todo-bg);
+  color: var(--todo-text);
+  padding: 0 0.25em;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.draft {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 10px;
+  background: var(--todo-bg);
+  color: var(--todo-text);
+  font-size: 0.9rem;
+}
+
+nav.legal {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+}

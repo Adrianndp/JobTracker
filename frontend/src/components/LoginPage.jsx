@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ApiError, useLogin, usePasswordReset, useSignup, useTokenLogin, useVerifyEmail } from '../api'
+import { ApiError, useLogin, usePasswordReset, useSignup, useTokenLogin, useVerifyEmail, webAppUrl } from '../api'
+import LegalLinks from './LegalLinks'
 import styles from './LoginPage.module.css'
 
 const MIN_PASSWORD_LENGTH = 10
@@ -27,7 +28,7 @@ const TITLES = {
  * else about the account happens on the website.
  * onAuthenticated(username, grant) -- grant is only present in token mode.
  */
-export default function LoginPage({ onAuthenticated, authMode = 'session' }) {
+export default function LoginPage({ onAuthenticated, onShowPlans, authMode = 'session' }) {
   const isTokenMode = authMode === 'token'
   const [mode, setMode] = useState(isTokenMode ? 'login' : initialMode)
   const [email, setEmail] = useState('')
@@ -128,7 +129,7 @@ export default function LoginPage({ onAuthenticated, authMode = 'session' }) {
     login: isTokenMode
       ? 'Sign in to connect this browser to your tracker.'
       : 'Welcome back. Log in to see your board.',
-    signup: 'Track every application on one board. Free for up to 5 jobs.',
+    signup: 'Track every application on one board. Free for up to 30 active applications.',
     verify: 'Enter the code we emailed you to confirm your address.',
     forgot: 'Enter your email and we will send you a reset code.',
     reset: 'Enter the code from the email and your new password.',
@@ -255,6 +256,15 @@ export default function LoginPage({ onAuthenticated, authMode = 'session' }) {
             {submitLabel}
           </button>
 
+          {mode === 'signup' && (
+            <p className={styles.terms}>
+              By creating an account you accept the{' '}
+              <a href={webAppUrl('/legal/agb.html')} target="_blank" rel="noopener noreferrer">terms (AGB)</a>
+              {' '}and have read the{' '}
+              <a href={webAppUrl('/legal/datenschutz.html')} target="_blank" rel="noopener noreferrer">privacy policy</a>.
+            </p>
+          )}
+
           {!isTokenMode && (
             <p className={styles.altAction}>
               {mode === 'login' && (
@@ -286,6 +296,12 @@ export default function LoginPage({ onAuthenticated, authMode = 'session' }) {
             </p>
           )}
 
+          {!isTokenMode && onShowPlans && (mode === 'login' || mode === 'signup') && (
+            <p className={styles.altAction}>
+              <button type="button" className={styles.linkBtn} onClick={onShowPlans}>Plans &amp; pricing</button>
+            </p>
+          )}
+
           {isTokenMode && (
             <p className={styles.altAction}>
               New here or forgot your password? Use the website, then sign in here.
@@ -293,6 +309,7 @@ export default function LoginPage({ onAuthenticated, authMode = 'session' }) {
           )}
         </form>
       </div>
+      <LegalLinks className={styles.legal} />
     </div>
   )
 }

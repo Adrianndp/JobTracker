@@ -3,7 +3,7 @@ import { useAuthStatus, useJobs, useUnauthorized } from '@app/api'
 import { safeHref } from '@app/lib/safeUrl'
 import LoginPage from '@app/components/LoginPage'
 import { postingFromUrl } from './jobBoards'
-import { defaultApiBase, ensureHostPermission, getApiBase, setApiBase } from './settings'
+import { API_HOST_FIXED, defaultApiBase, ensureHostPermission, getApiBase, setApiBase } from './settings'
 import { clearToken, getCachedToken, setToken } from './tokenStore'
 import styles from './SavePanel.module.css'
 
@@ -38,6 +38,11 @@ function BrandHeader() {
 }
 
 function SettingsRow({ onChanged }) {
+  if (API_HOST_FIXED) return null
+  return <ApiHostSetting onChanged={onChanged} />
+}
+
+function ApiHostSetting({ onChanged }) {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState('')
   const [error, setError] = useState('')

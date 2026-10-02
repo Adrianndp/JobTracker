@@ -1,9 +1,14 @@
-/** Where the backend lives. Build-time default, overridable at runtime. */
+/**
+ * Where the backend lives. Build-time default, overridable at runtime -- except
+ * in the Chrome Web Store build, which only has host permission for its own API.
+ */
 
 const KEY = 'apiBase'
 const BUILD_DEFAULT = (import.meta.env?.VITE_API_BASE || 'http://localhost:5001').replace(/\/+$/, '')
+export const API_HOST_FIXED = import.meta.env?.VITE_EXT_TARGET === 'store'
 
 export async function getApiBase() {
+  if (API_HOST_FIXED) return BUILD_DEFAULT
   try {
     const { [KEY]: stored } = await chrome.storage.local.get(KEY)
     return (stored || BUILD_DEFAULT).replace(/\/+$/, '')

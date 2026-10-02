@@ -151,6 +151,102 @@
   }
 }
 
+/* ── Plan chip ───────────────────────────────────── */
+.planChip,
+.planChipPro {
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.planChip {
+  color: #cbd5e1;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.planChip:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.planChipPro {
+  color: #fff;
+  background: #6366f1;
+  border: 1px solid #6366f1;
+}
+
+.planChipPro:hover {
+  background: #4f46e5;
+}
+
+/* ── Notice banner ───────────────────────────────── */
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.875rem;
+}
+
+.noticeActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.noticeBtn {
+  padding: 0.35rem 0.8rem;
+  border: none;
+  border-radius: 7px;
+  background: #6366f1;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.noticeBtn:hover {
+  background: #4f46e5;
+}
+
+.noticeClose {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #6366f1;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.noticeClose:hover {
+  background: #e0e7ff;
+}
+
+/* ── Footer ──────────────────────────────────────── */
+.footer {
+  width: min(100% - 3rem, 1800px);
+  margin: 0 auto;
+  padding: 0 0 1.5rem;
+}
+
 /* ── Filter row ──────────────────────────────────── */
 .filterRow {
   display: flex;

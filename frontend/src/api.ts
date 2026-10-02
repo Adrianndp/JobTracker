@@ -49,11 +49,85 @@ export type AuthResult =
 
 export class ApiError extends Error {
   status: number
+  /** Machine-readable reason, e.g. 'plan_limit' with a 402 */
+  code: string | null
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code: string | null = null) {
     super(message)
     this.status = status
+    this.code = code
   }
+}
+
+export interface Money {
+  /** In the currency's minor unit (cents) */
+  amount: number
+  currency: string
+}
+
+export interface PriceOption {
+  id: 'monthly' | 'quarterly'
+  label: string
+  /** List price in cents, tax included */
+  amount: number
+  currency: string
+  /** Billing period length */
+  months: number
+}
+
+export interface PublicPlans {
+  enabled: boolean
+  free_active_limit: number
+  prices: PriceOption[]
+}
+
+export interface PricePreview {
+  total: Money
+  tax: Money | null
+  tax_rate: string | null
+  country: string | null
+}
+
+export interface Invoice {
+  id: string
+  number: string | null
+  billed_at: string | null
+  total: Money | null
+}
+
+export interface SubscriptionDetails {
+  plan: PriceOption['id'] | null
+  label: string | null
+  status: string
+  interval: string | null
+  frequency: number | null
+  started_at: string | null
+  next_billed_at: string | null
+  next_payment: Money | null
+  cancel_at: string | null
+  payment_method: { type: string, brand: string | null, last4: string | null } | null
+  invoices: Invoice[]
+}
+
+export interface BillingStatus {
+  /** false when the server has no Paddle configured: no plans, no limits */
+  enabled: boolean
+  plan: 'free' | 'pro' | 'unlimited'
+  active_jobs: number
+  active_limit: number | null
+  status?: string
+  complimentary?: boolean
+  cancel_at_period_end?: boolean
+  current_period_end?: string | null
+  can_manage?: boolean
+  prices?: PriceOption[]
+}
+
+export interface CheckoutSession {
+  transaction_id: string
+  client_token: string
+  environment: 'sandbox' | 'production'
+  email: string | null
 }
 
 // ── Request helper (internal — components use the hooks below) ──────────────
@@ -78,7 +152,7 @@ async function send(url: string, method: string, body?: unknown): Promise<Respon
   const headers: Record<string, string> = {}
 
   // The backend only accepts JSON for POST/PATCH, even without a body
-  if (method === 'POST' || method === 'PATCH') {
+  if (method === 'POST' || method === 'PATCH' || body !== undefined) {
     headers['Content-Type'] = 'application/json'
   }
 
@@ -107,7 +181,7 @@ async function request<T>(url: string, { method = 'GET', body, notifyUnauthorize
   }
   const data = res.status === 204 ? null : await res.json().catch(() => null)
   if (!res.ok) {
-    throw new ApiError(res.status, data?.error || 'Something went wrong. Please try again.')
+    throw new ApiError(res.status, data?.error || 'Something went wrong. Please try again.', data?.code ?? null)
   }
   return data as T
 }
@@ -234,6 +308,88 @@ export function useTokenLogin() {
 export function useLogout() {
   const { run, ...state } = useRequest(logout)
   return { logout: run, ...state }
+}
+
+/** Closes the account for good; the server re-checks the password. */
+const deleteAccount = (password: string) =>
+  request<null>('/api/auth/account', { method: 'DELETE', body: { password } })
+
+export function useDeleteAccount() {
+  const { run, ...state } = useRequest(deleteAccount)
+  return { deleteAccount: run, ...state }
+}
+
+// ── Billing ─────────────────────────────────────────────────────────────────
+
+/** Plan and usage while `enabled`; reload() after anything that changes them. */
+export function useBilling(enabled: boolean) {
+  const [data, setData] = useState<BillingStatus | null>(null)
+  const [version, setVersion] = useState(0)
+
+  useEffect(() => {
+    if (!enabled) {
+      setData(null)
+      return
+    }
+    let cancelled = false
+    request<BillingStatus>('/api/billing/status')
+      .then(result => { if (!cancelled) setData(result) })
+      .catch(() => {}) // the board works without it
+    return () => { cancelled = true }
+  }, [enabled, version])
+
+  const reload = useCallback(() => setVersion(v => v + 1), [])
+  return { billing: data, reload }
+}
+
+/** What's on sale. Public, so the pricing page works before sign-up. */
+export function usePlans() {
+  const [plans, setPlans] = useState<PublicPlans | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    request<PublicPlans>('/api/billing/plans', { notifyUnauthorized: false })
+      .then(result => { if (!cancelled) setPlans(result) })
+      .catch(() => { if (!cancelled) setPlans({ enabled: false, free_active_limit: 0, prices: [] }) })
+    return () => { cancelled = true }
+  }, [])
+  return plans
+}
+
+/** The price with VAT for the buyer's country, or null when it can't be told yet. */
+export const previewPrice = (price: PriceOption['id']) =>
+  request<{ preview: PricePreview | null }>(`/api/billing/preview?price=${encodeURIComponent(price)}`)
+    .then(result => result.preview)
+    .catch(() => null)
+
+export const getBillingDetails = () =>
+  request<{ subscription: SubscriptionDetails | null }>('/api/billing/details')
+
+export const getInvoiceUrl = (id: string) =>
+  request<{ url: string }>(`/api/billing/invoices/${encodeURIComponent(id)}`)
+
+/** "€7.00" -- minor units to the currency's own format. */
+export function formatMoney(money: Money | null | undefined, { trim = false } = {}) {
+  if (!money) return ''
+  const format = (digits?: number) => new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: money.currency,
+    ...(digits === undefined ? {} : { minimumFractionDigits: digits, maximumFractionDigits: digits }),
+  })
+  const digits = format().resolvedOptions().maximumFractionDigits ?? 2
+  const value = money.amount / 10 ** digits
+  // trim: "€7" rather than "€7.00" for whole amounts, as on the pricing page
+  return format(trim && Number.isInteger(value) ? 0 : undefined).format(value)
+}
+
+export const startCheckout = (price: PriceOption['id']) =>
+  request<CheckoutSession>('/api/billing/checkout', { method: 'POST', body: { price } })
+
+export const openBillingPortal = () =>
+  request<{ url: string }>('/api/billing/portal', { method: 'POST' })
+
+/** The web app's own address, for pages (like the extension's) that can't run the checkout. */
+export function webAppUrl(path = '/') {
+  return (getTransport().baseUrl || window.location.origin) + path
 }
 
 // ── Jobs ────────────────────────────────────────────────────────────────────

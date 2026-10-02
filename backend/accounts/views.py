@@ -5,6 +5,8 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 
+from billing.paddle import PaddleError
+from billing.subscriptions import cancel_for_deletion
 from config.views import read_json
 
 from . import ratelimit, tokens
@@ -21,6 +23,9 @@ UNVERIFIED = 'Verify your email address first: sign in on the website to get a c
 LOGIN_LIMIT, LOGIN_WINDOW = 5, 15 * 60
 # Per IP across all emails, to stop spraying from one host.
 LOGIN_IP_LIMIT, LOGIN_IP_WINDOW = 20, 15 * 60
+# Deleting the account re-checks the password; a borrowed session mustn't be
+# able to guess it.
+DELETE_LIMIT, DELETE_WINDOW = 5, 15 * 60
 
 
 def read_str(data, key, strip=True):
@@ -124,4 +129,40 @@ class TokenDetailView(View):
         if token is None:
             return JsonResponse({'error': 'Token not found'}, status=404)
         tokens.revoke(token)
+        return HttpResponse(status=204)
+
+
+class AccountView(View):
+    """DELETE: close the account for good. Jobs, devices and email addresses go
+    with it (cascade); a live subscription is cancelled at Paddle first.
+
+    Paddle keeps its own record of past payments: as the seller it must keep
+    invoices for tax purposes.
+    """
+
+    http_method_names = ['delete']
+
+    def delete(self, request):
+        user = current_user(request)
+        allowed, retry = ratelimit.check('delete', user.pk, DELETE_LIMIT)
+        if not allowed:
+            return too_many(retry)
+        # 403, not 401: a wrong password here isn't an expired session, and the
+        # SPA signs you out on any 401.
+        if not user.check_password(read_str(read_json(request), 'password', strip=False)):
+            ratelimit.record_failure('delete', user.pk, DELETE_WINDOW)
+            return JsonResponse({'error': 'That password is not correct.'}, status=403)
+
+        try:
+            cancel_for_deletion(user)
+        except PaddleError:
+            return JsonResponse({
+                'error': 'Your subscription could not be cancelled, so the account was kept. '
+                         'Try again, or cancel it under Manage billing first.',
+            }, status=502)
+
+        if request.auth_scheme == 'session':
+            logout(request)
+        ratelimit.clear('delete', user.pk)
+        user.delete()
         return HttpResponse(status=204)

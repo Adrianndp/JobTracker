@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "build:ext": "vite build -c vite.extension.config.js && vite build -c vite.extension.sw.config.js && CONTENT_SCRIPT=linkedin vite build -c vite.extension.content.config.js && CONTENT_SCRIPT=xing vite build -c vite.extension.content.config.js",
+    "build:ext": "vite build -c vite.extension.config.js && vite build -c vite.extension.sw.config.js && CONTENT_SCRIPT=linkedin vite build -c vite.extension.content.config.js && CONTENT_SCRIPT=xing vite build -c vite.extension.content.config.js && CONTENT_SCRIPT=stepstone vite build -c vite.extension.content.config.js",
+    "build:ext:store": "VITE_EXT_TARGET=store npm run build:ext",
     "build:all": "npm run build && npm run build:ext"
   },
   "dependencies": {

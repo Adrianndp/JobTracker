@@ -202,6 +202,8 @@ class TrackerButton {
   showError(res) {
     if (res?.code === 'no-token') {
       this.render('signin', 'Sign in to save', { title: 'Sign in to Job Tracker to save jobs from this page' })
+    } else if (res?.code === 'plan_limit') {
+      this.render('limit', 'Free limit reached', { detail: 'Upgrade', title: res.error || '' })
     } else {
       this.render('error', 'Couldn’t save', { detail: 'Retry', title: res?.error || '' })
     }
@@ -235,6 +237,10 @@ class TrackerButton {
     if (this.state === 'busy') return
     if (this.state === 'saved') {
       send({ type: 'open-board' })
+      return
+    }
+    if (this.state === 'limit') {
+      send({ type: 'open-upgrade' })
       return
     }
     if (this.state === 'signin') {
