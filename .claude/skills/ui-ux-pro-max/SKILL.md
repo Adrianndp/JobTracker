@@ -56,8 +56,19 @@ hand when the brand colour changes.
 
 ## Patterns
 
-- **Buttons:** sentence case ("Add job", not "Add Job"); verb first; icon left at 14–16px,
-  `stroke-width` 2. Height 36 (`sm` 30). Loading: keep the label, add a `spinner`, disable.
+- **Buttons:** sentence case ("Add job", not "Add Job"); verb first; icon left, 16px
+  (14 in `sm`/`iconSm`). Height 36 (`sm` 30). Loading: keep the label, add a `spinner`, disable.
+- **Icons:** `lucide-react` only — `import { Pencil } from 'lucide-react'`, `<Pencil size={14} />`.
+  No hand-drawn `<svg>` and no text glyphs (←, ↗, ✕, ✓) as icons. Sizes: 16 buttons/menus/header,
+  14 small buttons, column headers and chevrons, 12 inline meta (date, "View posting ↗" →
+  `ArrowUpRight` *after* the text). Keep Lucide's default stroke (2); thicker (2.5–3) only for a
+  tiny check or close glyph. Colour is `currentColor`: inherit, or `--text-faint`/`--text-muted`
+  for decorative ones. Same meaning → same icon everywhere (interview = `MessagesSquare`,
+  external = `ArrowUpRight`, delete = `Trash2`, close = `X`). Column status icons live in
+  `COLUMNS[].icon`. Lucide icons are `aria-hidden` by default; icon-only buttons need `aria-label`.
+- **Logo:** `components/Logo.jsx` (indigo tile + white briefcase). Its plain-colour copy is
+  `public/favicon.svg`, from which the extension PNGs (`extension/public/icons/{16,48,128}.png`)
+  are rendered, and `trackerButton.js` draws the same glyph on its badge — change all together.
 - **Forms:** label above input, `gap: var(--space-1-5)`; fields `gap: var(--space-4)`. Optional
   fields say "(optional)" in `--text-muted`; don't mark required ones with red asterisks.
   Errors: one `alertError` above the submit button, worded as what to do next.

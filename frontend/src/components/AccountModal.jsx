@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import { ApiError, formatMoney, getBillingDetails, getInvoiceUrl, openBillingPortal, useDeleteAccount } from '../api'
 import styles from './AccountModal.module.css'
 
@@ -274,10 +275,7 @@ export default function AccountModal({ username, billing, onShowPlans, onClose, 
             <p className={styles.subtitle}>{username}</p>
           </div>
           <button type="button" ref={closeBtn} className={styles.closeBtn} onClick={onClose} aria-label="Close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <X size={16} />
           </button>
         </div>
 

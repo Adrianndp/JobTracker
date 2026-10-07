@@ -350,8 +350,11 @@ EU hosting.
   controls (`controls.module.css`, used through `composes`) for the web app and extension pages;
   light header, columns open by default, an "Expand/Collapse all" toolbar button instead of the
   hidden logo click, hover actions on cards, one modal/menu/button style everywhere. Rules for
-  future UI work are in the `ui-ux-pro-max` skill. Open: content-script button
-  (`trackerButton.js`) still has its own inline styles; no dark mode.
+  future UI work are in the `ui-ux-pro-max` skill. Icons: one set (lucide-react) everywhere, status
+  icons on the columns, a real logo (`Logo.jsx`) shared by favicon, extension icons and the in-page
+  button. Moving a job to "Got an Offer" fires confetti (`lib/celebrate.ts`, canvas-confetti
+  loaded on first use, skipped with reduced motion). Open: content-script button
+  (`trackerButton.js`) still has its own inline styles (logo/colours synced by hand); no dark mode.
 - Landing page with pricing, German and English.
 - Support email address and a short FAQ.
 - Positioning: "Made for the German job market, hosted in the EU, your data is never sold."

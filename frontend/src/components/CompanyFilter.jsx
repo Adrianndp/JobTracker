@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Building2, Search, X } from 'lucide-react'
 import styles from './CompanyFilter.module.css'
 
 export default function CompanyFilter({ companies, filters, onFiltersChange }) {
@@ -46,20 +47,14 @@ export default function CompanyFilter({ companies, filters, onFiltersChange }) {
 
   return (
     <div className={styles.bar}>
-      <svg className={styles.searchIcon} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="11" cy="11" r="8" />
-        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-      </svg>
+      <Search className={styles.searchIcon} size={16} />
 
       <div className={styles.inner}>
         {filters.map(f => (
           <span key={f} className={styles.chip}>
             {f}
             <button className={styles.chipX} onClick={() => remove(f)} aria-label={`Remove ${f} filter`}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+              <X size={12} strokeWidth={2.5} />
             </button>
           </span>
         ))}
@@ -77,10 +72,7 @@ export default function CompanyFilter({ companies, filters, onFiltersChange }) {
             <div className={styles.dropdown}>
               {suggestions.map(s => (
                 <button key={s} className={styles.option} onMouseDown={() => add(s)}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="7" width="20" height="14" rx="2" />
-                    <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-                  </svg>
+                  <Building2 size={14} />
                   {s}
                 </button>
               ))}

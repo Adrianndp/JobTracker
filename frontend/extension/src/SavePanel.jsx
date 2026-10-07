@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { ArrowUpRight, BookmarkPlus, Link2, Server } from 'lucide-react'
 import { useAuthStatus, useJobs, useUnauthorized } from '@app/api'
 import { safeHref } from '@app/lib/safeUrl'
 import ExtensionLogin from '@app/components/ExtensionLogin'
@@ -45,6 +46,7 @@ function ApiHostSetting({ onChanged }) {
   if (!open) {
     return (
       <button type="button" className={styles.settingsToggle} onClick={() => setOpen(true)}>
+        <Server size={12} />
         Backend: {value || defaultApiBase}
       </button>
     )
@@ -171,16 +173,23 @@ function SaveForm({ onSaved }) {
         <div className={styles.labelRow}>
           <label className={styles.label} htmlFor="link">Link</label>
           <button type="button" className={styles.inlineBtn} onClick={useCurrentLink}>
+            <Link2 size={14} />
             Use current link
           </button>
         </div>
         <input id="link" className={styles.input} value={form.link} onChange={set('link')} />
-        {href && <a className={styles.preview} href={href} target="_blank" rel="noopener noreferrer">Open posting</a>}
+        {href && (
+          <a className={styles.preview} href={href} target="_blank" rel="noopener noreferrer">
+            Open posting
+            <ArrowUpRight size={12} />
+          </a>
+        )}
       </div>
 
       {error && <p className={styles.error} role="alert">{error}</p>}
 
       <button type="submit" className={styles.primaryBtn} disabled={busy}>
+        {!busy && <BookmarkPlus size={16} />}
         {busy ? 'Saving…' : 'Save to To Be Applied'}
       </button>
     </form>
@@ -207,7 +216,8 @@ function RecentSaves({ refreshKey }) {
       <div className={styles.recentHeader}>
         <h2 className={styles.recentTitle}>Recently saved</h2>
         <button type="button" className={styles.inlineBtn} onClick={openBoard} title="Open your full board in a new tab">
-          Open board ↗
+          Open board
+          <ArrowUpRight size={14} />
         </button>
       </div>
       {!recent.length && <p className={styles.note}>Nothing saved yet.</p>}

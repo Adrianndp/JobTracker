@@ -44,15 +44,20 @@ export function buttonByLabel(pattern, root = document) {
   return null
 }
 
-// The app's mark (the briefcase from the board header and favicon) on an
-// indigo badge, plus the two glyphs that replace it while saving and once saved.
-const BRAND = '#6366f1'
+// The app's mark (src/components/Logo.jsx, public/favicon.svg): the badge is
+// the indigo tile and LOGO the white briefcase on it, in the logo's 32-unit
+// grid. CHECK and PLUS are Lucide's glyphs, as in the app. Values are copied
+// from src/styles/tokens.css (brand-500/600/700) since the page can't load it.
+const BRAND = '#4f46e5'
+const BRAND_GRADIENT = 'linear-gradient(135deg, #6366f1, #4338ca)'
 const LOGO = [
-  ['rect', { x: 2, y: 7, width: 20, height: 14, rx: 2 }],
-  ['path', { d: 'M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2' }],
+  ['path', { d: 'M12.5 11V9.5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2V11', fill: 'none', stroke: '#fff', 'stroke-width': 2, 'stroke-linecap': 'round' }],
+  ['rect', { x: 7, y: 11, width: 18, height: 13.5, rx: 3, fill: '#fff' }],
+  ['path', { d: 'M7 17.25h18', stroke: BRAND, 'stroke-width': 1.5 }],
+  ['rect', { x: 14, y: 15.5, width: 4, height: 3.5, rx: 1, fill: BRAND }],
 ]
-const CHECK = [['path', { d: 'M5 12.5l4.5 4.5L19 7.5' }]]
-const PLUS = [['path', { d: 'M12 5v14M5 12h14' }]]
+const CHECK = [['path', { d: 'M20 6 9 17l-5-5' }]]
+const PLUS = [['path', { d: 'M5 12h14M12 5v14' }]]
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
 /**
@@ -79,9 +84,11 @@ const BASE_STYLE = `
 
   .badge {
     flex: none; width: 22px; height: 22px; border-radius: 6px;
-    display: grid; place-items: center; color: #fff; background: ${BRAND};
+    display: grid; place-items: center; color: #fff; background: ${BRAND_GRADIENT};
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
   }
   .badge svg { width: 14px; height: 14px; }
+  .badge .logo { width: 22px; height: 22px; }
   .badge .check, .badge .plus, .badge .spinner, .saved .badge .logo, .busy .badge .logo { display: none; }
   .saved .badge .check { display: block; }
   .busy .badge .spinner { display: block; }
@@ -115,6 +122,7 @@ const LAYOUT_STYLE = `
   :host([data-compact]) button { height: 32px; padding: 0 12px 0 6px; gap: 6px; font-size: 14px; }
   :host([data-compact]) .badge { width: 20px; height: 20px; border-radius: 5px; }
   :host([data-compact]) .badge svg { width: 12px; height: 12px; }
+  :host([data-compact]) .badge .logo { width: 20px; height: 20px; }
 `
 
 // Built with DOM calls rather than innerHTML: LinkedIn enforces Trusted Types,
@@ -124,6 +132,11 @@ function el(tag, attrs, children = []) {
   for (const [name, value] of Object.entries(attrs)) node.setAttribute(name, String(value))
   node.append(...children)
   return node
+}
+
+function logo() {
+  return el('svg', { class: 'logo', viewBox: '0 0 32 32', 'aria-hidden': 'true' },
+    LOGO.map(([tag, attrs]) => el(tag, attrs)))
 }
 
 function icon(className, shapes) {
@@ -147,7 +160,7 @@ function createButton(style) {
   button.type = 'button'
   button.append(
     el('span', { class: 'badge' }, [
-      icon('logo', LOGO), icon('plus', PLUS), icon('check', CHECK), el('span', { class: 'spinner' }),
+      logo(), icon('plus', PLUS), icon('check', CHECK), el('span', { class: 'spinner' }),
     ]),
     el('span', { class: 'label' }),
     el('span', { class: 'detail' }),

@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { ArrowLeft, Check as CheckIcon, ShieldCheck } from 'lucide-react'
 import { formatMoney } from '../api'
 import LegalLinks from './LegalLinks'
+import Logo from './Logo'
 import styles from './PricingPage.module.css'
 
 const FAQ = [
@@ -16,9 +18,7 @@ const FAQ = [
 
 function Check() {
   return (
-    <svg className={styles.check} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M5 12.5l4.5 4.5L19 7.5" />
-    </svg>
+    <CheckIcon className={styles.check} size={18} strokeWidth={3} />
   )
 }
 
@@ -52,16 +52,12 @@ export default function PricingPage({ plans, billing, onBack, backLabel, onChoos
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <span className={styles.brand}>
-            <span className={styles.brandIcon} aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="7" width="20" height="14" rx="2" />
-                <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-              </svg>
-            </span>
+            <Logo size={28} />
             Job Tracker
           </span>
           <button type="button" className={styles.backBtn} onClick={onBack}>
-            ← {backLabel}
+            <ArrowLeft size={16} />
+            {backLabel}
           </button>
         </div>
       </header>
@@ -160,10 +156,7 @@ export default function PricingPage({ plans, billing, onBack, backLabel, onChoos
         </div>
 
         <p className={styles.trust}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="4" y="11" width="16" height="10" rx="2" />
-            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-          </svg>
+          <ShieldCheck size={16} />
           Prices include VAT. Secure checkout by Paddle, our reseller. Cancel anytime.
         </p>
 

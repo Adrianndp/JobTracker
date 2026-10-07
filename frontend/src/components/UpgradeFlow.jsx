@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Check, LockKeyhole, X } from 'lucide-react'
 import { ApiError, formatMoney, previewPrice, startCheckout } from '../api'
 import { openCheckout } from '../lib/paddle'
 import styles from './UpgradeFlow.module.css'
@@ -31,9 +32,7 @@ function Stepper({ step }) {
           <li key={label} className={styles[state]} aria-current={state === 'current' ? 'step' : undefined}>
             <span className={styles.dot}>
               {state === 'done' ? (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M5 12.5l4.5 4.5L19 7.5" />
-                </svg>
+                <Check size={14} strokeWidth={3} />
               ) : index + 1}
             </span>
             <span className={styles.stepLabel}>{label}</span>
@@ -133,10 +132,7 @@ export default function UpgradeFlow({ prices, initialPrice, billing, reloadBilli
           <h2 id="upgrade-title" className={styles.title}>Upgrade to Pro</h2>
           {!busy && (
             <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+              <X size={16} />
             </button>
           )}
         </div>
@@ -222,10 +218,7 @@ export default function UpgradeFlow({ prices, initialPrice, billing, reloadBilli
               {payment === 'opening' || payment === 'open' ? (
                 <>
                   <span className={styles.lockIcon} aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="4" y="11" width="16" height="10" rx="2" />
-                      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                    </svg>
+                    <LockKeyhole size={26} />
                   </span>
                   <p className={styles.centerTitle}>{payment === 'opening' ? 'Opening the secure checkout…' : 'Complete your payment in the Paddle window'}</p>
                   <p className={styles.hint}>Your card details go straight to Paddle. We never see them.</p>
@@ -260,9 +253,7 @@ export default function UpgradeFlow({ prices, initialPrice, billing, reloadBilli
           {step === 3 && (
             <div className={styles.center}>
               <span className={styles.successIcon} aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.75" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12.5l4.5 4.5L19 7.5" />
-                </svg>
+                <Check size={26} strokeWidth={2.5} />
               </span>
               <p className={styles.centerTitle}>You’re on Pro</p>
               <p className={styles.hint}>

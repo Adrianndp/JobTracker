@@ -7,6 +7,16 @@
   composes: btn secondary from '../styles/controls.module.css';
 }
 
+.caret {
+  margin-right: calc(-1 * var(--space-1));
+  color: var(--text-faint);
+  transition: transform var(--duration) var(--ease);
+}
+
+.trigger[aria-expanded='true'] .caret {
+  transform: rotate(180deg);
+}
+
 .dropdown {
   composes: menu from '../styles/controls.module.css';
   top: calc(100% + var(--space-2));
@@ -38,7 +48,8 @@
 }
 
 @media (max-width: 639px) {
-  .label {
+  .label,
+  .caret {
     display: none;
   }
 

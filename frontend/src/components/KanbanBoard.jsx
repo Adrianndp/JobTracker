@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { DragDropContext } from '@hello-pangea/dnd'
+import { Bookmark, CircleX, Ghost, MessagesSquare, Send, Trophy } from 'lucide-react'
 import KanbanColumn from './KanbanColumn'
 import styles from './KanbanBoard.module.css'
 
@@ -8,37 +9,37 @@ export const COLUMNS = [
     id: 'to_be_applied',
     label: 'To Be Applied',
     color: '#6366f1',
-    emoji: null,
+    icon: Bookmark,
   },
   {
     id: 'applied',
     label: 'Applied',
     color: '#f59e0b',
-    emoji: null,
+    icon: Send,
   },
   {
     id: 'in_interview',
     label: 'In Interview',
     color: '#8b5cf6',
-    emoji: null,
+    icon: MessagesSquare,
   },
   {
     id: 'ghosted',
     label: 'Ghosted',
     color: '#64748b',
-    emoji: null,
+    icon: Ghost,
   },
   {
     id: 'rejected',
     label: 'Got Rejected',
     color: '#ef4444',
-    emoji: null,
+    icon: CircleX,
   },
   {
     id: 'offer',
     label: 'Got an Offer',
     color: '#10b981',
-    emoji: null,
+    icon: Trophy,
   },
 ]
 

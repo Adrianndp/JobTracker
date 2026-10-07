@@ -43,6 +43,9 @@
 
 .inlineBtn {
   composes: link from '../../src/styles/controls.module.css';
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: var(--text-sm);
 }
 
@@ -79,6 +82,9 @@
 
 .preview {
   composes: link from '../../src/styles/controls.module.css';
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0-5);
   align-self: flex-start;
   font-size: var(--text-xs);
 }
@@ -155,6 +161,9 @@
 }
 
 .settingsToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
   margin-top: auto;
   padding: var(--space-2) 0 0;
   border: none;
@@ -165,6 +174,10 @@
   text-align: left;
   word-break: break-all;
   cursor: pointer;
+}
+
+.settingsToggle svg {
+  flex-shrink: 0;
 }
 
 .settingsToggle:hover {

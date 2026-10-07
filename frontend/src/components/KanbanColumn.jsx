@@ -1,4 +1,5 @@
 import { Droppable } from '@hello-pangea/dnd'
+import { ChevronDown } from 'lucide-react'
 import JobCard from './JobCard'
 import styles from './KanbanColumn.module.css'
 
@@ -8,6 +9,8 @@ export default function KanbanColumn({ column, jobs, onDelete, onEdit, forceExpa
   const cards = jobs.map((job, index) => (
     <JobCard key={job.id} job={job} index={index} color={column.color} onDelete={onDelete} onEdit={onEdit} />
   ))
+
+  const StatusIcon = column.icon
 
   return (
     <section className={styles.column} style={{ '--col-color': column.color }} aria-label={column.label}>
@@ -19,18 +22,11 @@ export default function KanbanColumn({ column, jobs, onDelete, onEdit, forceExpa
         aria-expanded={!isCollapsed}
         title={isCollapsed ? 'Show cards' : 'Hide cards'}
       >
-        <span className={styles.dot} />
+        <StatusIcon className={styles.statusIcon} size={15} strokeWidth={2.25} />
         <h3 className={styles.title}>{column.label}</h3>
         <span className={styles.count}>{jobs.length}</span>
         {jobs.length > 0 && (
-          <svg
-            className={`${styles.chevron} ${isCollapsed ? '' : styles.chevronOpen}`}
-            width="14" height="14" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
+          <ChevronDown className={`${styles.chevron} ${isCollapsed ? styles.chevronCollapsed : ''}`} size={14} />
         )}
       </button>
 

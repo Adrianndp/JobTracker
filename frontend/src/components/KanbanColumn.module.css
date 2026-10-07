@@ -30,13 +30,9 @@
   color: var(--text-secondary);
 }
 
-.dot {
-  width: 8px;
-  height: 8px;
+.statusIcon {
   flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--col-color);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--col-color) 18%, transparent);
+  color: var(--col-color);
 }
 
 .title {
@@ -73,8 +69,8 @@
   transition: transform var(--duration) var(--ease), color var(--duration-fast) var(--ease);
 }
 
-.chevronOpen {
-  transform: rotate(180deg);
+.chevronCollapsed {
+  transform: rotate(-90deg);
 }
 
 /* ── Body ────────────────────────────────────────── */
