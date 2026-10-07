@@ -1,289 +1,138 @@
 .overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
+  composes: backdrop from '../styles/controls.module.css';
 }
 
 .modal {
-  background: #fff;
-  border-radius: 18px;
-  width: 100%;
-  max-width: 480px;
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.06);
-  animation: slideIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  composes: dialog from '../styles/controls.module.css';
+  max-width: 460px;
 }
 
-@keyframes slideIn {
-  from { opacity: 0; transform: translateY(24px) scale(0.96); }
-  to   { opacity: 1; transform: translateY(0)    scale(1); }
-}
-
-/* ── Modal header ────────────────────────────────── */
+/* ── Header ──────────────────────────────────────── */
 .modalHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 1.5rem 1.5rem 0;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-6) 0;
 }
 
 .modalTitle {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
 }
 
-.modalIcon {
-  width: 36px;
-  height: 36px;
-  background: #eef2ff;
-  color: #6366f1;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modalTitle h2 {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #0f172a;
+.modalSubtitle {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
 }
 
 .closeBtn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: #f1f5f9;
-  color: #64748b;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s, color 0.15s;
-}
-
-.closeBtn:hover {
-  background: #e2e8f0;
-  color: #0f172a;
+  composes: btn ghost iconSm from '../styles/controls.module.css';
+  margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-2)) 0 0;
+  color: var(--text-muted);
 }
 
 /* ── Form ────────────────────────────────────────── */
 .form {
-  padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6) var(--space-6);
 }
 
 .field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  composes: field from '../styles/controls.module.css';
 }
 
 .label {
-  font-size: 0.83rem;
-  font-weight: 600;
-  color: #374151;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.required {
-  color: #ef4444;
-  font-weight: 700;
+  composes: label from '../styles/controls.module.css';
 }
 
 .optional {
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: #94a3b8;
-  background: #f1f5f9;
-  padding: 1px 6px;
-  border-radius: 4px;
+  font-weight: var(--weight-regular);
+  color: var(--text-muted);
 }
 
 .input {
-  padding: 0.65rem 0.875rem;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 0.875rem;
-  color: #0f172a;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  background: #fff;
-}
-
-.input:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-}
-
-.input::placeholder {
-  color: #b0bac6;
+  composes: input from '../styles/controls.module.css';
 }
 
 .error {
-  font-size: 0.8rem;
-  color: #ef4444;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
+  composes: alertError from '../styles/controls.module.css';
 }
 
 .errorLink {
-  padding: 0;
-  border: none;
-  background: none;
-  color: #4f46e5;
-  font: inherit;
-  font-weight: 700;
+  composes: link from '../styles/controls.module.css';
+  font-weight: var(--weight-semibold);
   text-decoration: underline;
-  cursor: pointer;
 }
 
 /* ── Actions ─────────────────────────────────────── */
 .actions {
   display: flex;
-  gap: 0.75rem;
   justify-content: flex-end;
-  padding-top: 0.25rem;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .cancelBtn {
-  padding: 0.6rem 1.2rem;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 9px;
-  background: #fff;
-  color: #374151;
-  font-size: 0.875rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.cancelBtn:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  composes: btn secondary from '../styles/controls.module.css';
 }
 
 .submitBtn {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.6rem 1.3rem;
-  border: none;
-  border-radius: 9px;
-  background: #6366f1;
-  color: #fff;
-  font-size: 0.875rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
-}
-
-.submitBtn:hover:not(:disabled) {
-  background: #4f46e5;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
-}
-
-.submitBtnEdit {
-  background: #d97706;
-}
-
-.submitBtnEdit:hover:not(:disabled) {
-  background: #b45309;
-  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.4);
-}
-
-.submitBtn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
+  composes: btn primary from '../styles/controls.module.css';
+  min-width: 112px;
 }
 
 .btnSpinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
+  composes: spinner from '../styles/controls.module.css';
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ── Interview toggle ────────────────────────────── */
+/* ── Interview switch ────────────────────────────── */
 .toggleBtn {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.5rem 0.75rem;
-  background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 9px;
-  font-size: 0.855rem;
-  font-weight: 600;
-  color: #64748b;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  gap: var(--space-2-5);
   width: fit-content;
-}
-
-.toggleBtn:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-}
-
-.toggleBtnOn {
-  background: #f0fdf4;
-  border-color: #86efac;
-  color: #16a34a;
-}
-
-.toggleBtnOn:hover {
-  background: #dcfce7;
-  border-color: #4ade80;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
 }
 
 .toggleTrack {
-  width: 32px;
-  height: 18px;
-  background: #cbd5e1;
-  border-radius: 99px;
+  flex-shrink: 0;
+  width: 34px;
+  height: 20px;
   display: flex;
   align-items: center;
   padding: 2px;
-  transition: background 0.2s;
-  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: var(--gray-300);
+  transition: background var(--duration) var(--ease);
 }
 
-.toggleBtnOn .toggleTrack {
-  background: #22c55e;
+.toggleBtn:hover .toggleTrack {
+  background: var(--gray-400);
+}
+
+.toggleBtnOn .toggleTrack,
+.toggleBtnOn:hover .toggleTrack {
+  background: var(--accent);
 }
 
 .toggleThumb {
-  width: 14px;
-  height: 14px;
-  background: #fff;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-  transition: transform 0.2s;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--duration) var(--ease);
 }
 
 .toggleBtnOn .toggleThumb {

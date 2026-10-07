@@ -2,16 +2,16 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.4rem 1.1rem;
-  font-size: 0.78rem;
+  gap: var(--space-1-5) var(--space-4);
+  font-size: var(--text-xs);
 }
 
 .links a {
-  color: #94a3b8;
+  color: var(--text-muted);
   text-decoration: none;
 }
 
 .links a:hover {
-  color: #475569;
+  color: var(--text-secondary);
   text-decoration: underline;
 }

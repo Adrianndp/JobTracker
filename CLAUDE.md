@@ -83,4 +83,7 @@ Loading `.env` into a shell to run commands is fine; echoing its values is not.
   modules open with a docstring saying what they own — keep that up.
 - Frontend: function components, one `Component.jsx` + `Component.module.css` per component,
   no UI library; `.ts` only for `api.ts` and `src/lib/`.
+- UI: no raw colours/sizes in component CSS — use `src/styles/tokens.css` variables and
+  `composes:` from `src/styles/controls.module.css`. Follow the `ui-ux-pro-max` skill for any
+  screen or style change.
 - Commits: conventional prefix, imperative — `feat: add …`, `fix: …`, `refactor: …`.

@@ -2,307 +2,226 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f1f5f9;
+  background: var(--bg-app);
 }
 
 /* ── Header ─────────────────────────────────────── */
 .header {
-  background: #0f172a;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: var(--z-header);
+  background: var(--bg-header);
+  backdrop-filter: saturate(180%) blur(8px);
+  border-bottom: 1px solid var(--border);
 }
 
 .headerInner {
-  width: min(100% - 3rem, 1800px);
+  width: min(100% - 2 * var(--page-gutter), var(--page-max));
+  height: var(--header-height);
   margin: 0 auto;
-  height: 64px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 1rem;
-}
-
-@media (min-width: 1024px) {
-  .headerInner {
-    width: min(100% - 5rem, 1800px);
-  }
-}
-
-.brand {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   min-width: 0;
-  background: none;
-  border: none;
-  padding: 0.25rem;
-  margin: -0.25rem;
-  border-radius: 8px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s;
-  justify-self: start;
-}
-
-.brand:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.brand:active {
-  background: rgba(255, 255, 255, 0.1);
 }
 
 .brandIcon {
-  color: #818cf8;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--gray-900);
+  color: var(--brand-400);
 }
 
 .brandName {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #f1f5f9;
-  letter-spacing: -0.3px;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.crumbSep {
+  color: var(--border-strong);
+  font-size: var(--text-md);
+  margin: 0 var(--space-1);
 }
 
 .boardTitle {
-  justify-self: center;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #cbd5e1;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  letter-spacing: normal;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.addBtn {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1.1rem;
-  background: #6366f1;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
-  box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
-}
-
-.addBtn:hover {
-  background: #4f46e5;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.45);
-}
-
-.addBtn:active {
-  transform: translateY(0);
 }
 
 .headerActions {
   display: flex;
   align-items: center;
-  justify-self: end;
-  gap: 0.75rem;
-  min-width: 0;
+  gap: var(--space-1);
+  flex-shrink: 0;
 }
 
-.logoutBtn {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.7rem;
-  background: transparent;
-  color: #94a3b8;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
-}
-
-.logoutBtn:hover {
-  color: #f1f5f9;
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.2);
+.headerBtn {
+  composes: btn ghost sm from './styles/controls.module.css';
 }
 
 @media (max-width: 639px) {
-  .logoutLabel {
-    display: none;
-  }
-
-  .logoutBtn {
-    padding: 0.45rem;
-  }
-
+  .headerBtnLabel,
+  .crumbSep,
   .boardTitle {
     display: none;
+  }
+
+  .headerBtn {
+    width: var(--control-height-sm);
+    padding: 0;
   }
 }
 
 /* ── Plan chip ───────────────────────────────────── */
-.planChip,
-.planChipPro {
-  padding: 0.3rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  font-family: inherit;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s;
-}
-
 .planChip {
-  color: #cbd5e1;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  composes: btn secondary sm from './styles/controls.module.css';
+  margin-right: var(--space-2);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
 }
 
-.planChip:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.3);
+.planMeter {
+  width: 28px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--gray-200);
+  overflow: hidden;
+}
+
+.planMeter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
 }
 
 .planChipPro {
-  color: #fff;
-  background: #6366f1;
-  border: 1px solid #6366f1;
+  composes: btn sm from './styles/controls.module.css';
+  margin-right: var(--space-2);
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+  border-color: var(--accent-border);
+  font-weight: var(--weight-semibold);
 }
 
 .planChipPro:hover {
-  background: #4f46e5;
+  background: var(--brand-100);
 }
 
 /* ── Notice banner ───────────────────────────────── */
 .notice {
+  composes: alertInfo from './styles/controls.module.css';
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  padding: 0.65rem 0.9rem;
-  border: 1px solid #c7d2fe;
-  border-radius: 10px;
-  background: #eef2ff;
-  color: #3730a3;
-  font-size: 0.875rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  font-size: var(--text-base);
 }
 
 .noticeActions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-1);
   flex-shrink: 0;
 }
 
 .noticeBtn {
-  padding: 0.35rem 0.8rem;
-  border: none;
-  border-radius: 7px;
-  background: #6366f1;
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.noticeBtn:hover {
-  background: #4f46e5;
+  composes: btn primary sm from './styles/controls.module.css';
 }
 
 .noticeClose {
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 7px;
-  background: transparent;
-  color: #6366f1;
-  font-size: 1.2rem;
-  line-height: 1;
-  cursor: pointer;
+  composes: btn ghost iconSm from './styles/controls.module.css';
+  color: var(--brand-700);
 }
 
-.noticeClose:hover {
-  background: #e0e7ff;
-}
-
-/* ── Footer ──────────────────────────────────────── */
-.footer {
-  width: min(100% - 3rem, 1800px);
+/* ── Main ────────────────────────────────────────── */
+.main {
+  flex: 1;
+  width: min(100% - 2 * var(--page-gutter), var(--page-max));
   margin: 0 auto;
-  padding: 0 0 1.5rem;
+  padding: var(--space-6) 0 var(--space-8);
+  overflow-x: auto; /* phones: the columns scroll sideways, not the page */
 }
 
-/* ── Filter row ──────────────────────────────────── */
+/* ── Toolbar ─────────────────────────────────────── */
 .filterRow {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
 }
 
 .filterActions {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--space-2);
   flex-shrink: 0;
+}
+
+.toolbarBtn {
+  composes: btn ghost from './styles/controls.module.css';
+}
+
+.addBtn {
+  composes: btn primary from './styles/controls.module.css';
 }
 
 @media (max-width: 639px) {
   .filterRow {
     flex-wrap: wrap;
   }
-}
 
-/* ── Main ────────────────────────────────────────── */
-.main {
-  flex: 1;
-  width: min(100% - 3rem, 1800px);
-  margin: 0 auto;
-  padding: 1.5rem 0 2rem;
-  overflow-x: auto;
-  background: #f1f5f9;
-}
-
-@media (min-width: 1024px) {
-  .main {
-    width: min(100% - 5rem, 1800px);
-    padding: 2rem 0 2.5rem;
+  .toolbarBtn {
+    display: none;
   }
+}
+
+/* ── Footer ──────────────────────────────────────── */
+.footer {
+  width: min(100% - 2 * var(--page-gutter), var(--page-max));
+  margin: 0 auto;
+  padding: 0 0 var(--space-6);
 }
 
 /* ── Loading ─────────────────────────────────────── */
 .loading {
+  height: 60vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 60vh;
-  gap: 1rem;
-  color: #94a3b8;
-  font-size: 0.9rem;
+  gap: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
 }
 
 .spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid #e2e8f0;
-  border-top-color: #6366f1;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--gray-200);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }

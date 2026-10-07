@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuthStatus, useJobs, useUnauthorized } from '@app/api'
 import { safeHref } from '@app/lib/safeUrl'
-import LoginPage from '@app/components/LoginPage'
+import ExtensionLogin from '@app/components/ExtensionLogin'
 import { postingFromUrl } from './jobBoards'
 import { API_HOST_FIXED, defaultApiBase, ensureHostPermission, getApiBase, setApiBase } from './settings'
 import { clearToken, getCachedToken, setToken } from './tokenStore'
@@ -13,28 +13,6 @@ const MAX_LINK = 500 // backend/jobs/validators.py
 
 function openBoard() {
   chrome.tabs.create({ url: chrome.runtime.getURL('board.html') })
-}
-
-/**
- * The panel's own title bar. Chrome draws its side-panel header itself and
- * doesn't let extensions handle clicks on it, so this is the brand you can click
- * to get to the board.
- */
-function BrandHeader() {
-  return (
-    <button type="button" className={styles.brand} onClick={openBoard} title="Open your full board in a new tab">
-      <span className={styles.brandBadge} aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="7" width="20" height="14" rx="2" />
-          <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-        </svg>
-      </span>
-      <span className={styles.brandName}>Job Tracker</span>
-      <svg className={styles.brandOpen} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
-      </svg>
-    </button>
-  )
 }
 
 function SettingsRow({ onChanged }) {
@@ -172,6 +150,7 @@ function SaveForm({ onSaved }) {
 
   return (
     <form className={styles.form} onSubmit={submit}>
+      <h2 className={styles.formTitle}>Save a job</h2>
       {note && <p className={styles.note}>{note}</p>}
 
       <div className={styles.field}>
@@ -183,7 +162,9 @@ function SaveForm({ onSaved }) {
         <input id="company" className={styles.input} value={form.company} onChange={set('company')} />
       </div>
       <div className={styles.field}>
-        <label className={styles.label} htmlFor="salary">Salary</label>
+        <label className={styles.label} htmlFor="salary">
+          Salary <span className={styles.optional}>(optional)</span>
+        </label>
         <input id="salary" className={styles.input} value={form.salary} onChange={set('salary')} />
       </div>
       <div className={styles.field}>
@@ -200,7 +181,7 @@ function SaveForm({ onSaved }) {
       {error && <p className={styles.error} role="alert">{error}</p>}
 
       <button type="submit" className={styles.primaryBtn} disabled={busy}>
-        {busy ? 'Saving...' : 'Save to To Be Applied'}
+        {busy ? 'Saving…' : 'Save to To Be Applied'}
       </button>
     </form>
   )
@@ -218,11 +199,18 @@ function RecentSaves({ refreshKey }) {
   }, [setJobs])
 
   const recent = jobs.slice(0, 5)
-  if (!recent.length) return null
 
+  // Always shown, even before the first save: "Open board" is the panel's only
+  // way to the full board (Chrome's own side-panel header can't be extended).
   return (
     <div className={styles.recent} key={refreshKey}>
-      <h2 className={styles.recentTitle}>Recently saved</h2>
+      <div className={styles.recentHeader}>
+        <h2 className={styles.recentTitle}>Recently saved</h2>
+        <button type="button" className={styles.inlineBtn} onClick={openBoard} title="Open your full board in a new tab">
+          Open board ↗
+        </button>
+      </div>
+      {!recent.length && <p className={styles.note}>Nothing saved yet.</p>}
       <ul className={styles.recentList}>
         {recent.map((job) => (
           <li key={job.id} className={styles.recentItem}>
@@ -249,14 +237,14 @@ export default function SavePanel({ onApiBaseChanged }) {
     || (session === undefined && authStatus.data?.authenticated)
 
   if (session !== 'login' && authStatus.loading) {
-    return <div className={styles.panel}><p className={styles.note}>Connecting...</p></div>
+    return <div className={styles.panel}><p className={styles.note}>Connecting…</p></div>
   }
 
   if (!authed) {
     return (
       <div className={styles.panel}>
-        <LoginPage
-          authMode="token"
+        <ExtensionLogin
+          compact
           onAuthenticated={async (_username, grant) => {
             if (grant?.token) await setToken(grant.token)
             setSession('authed')
@@ -269,7 +257,6 @@ export default function SavePanel({ onApiBaseChanged }) {
 
   return (
     <div className={styles.panel}>
-      <BrandHeader />
       <SaveForm onSaved={() => setSaved((n) => n + 1)} />
       <RecentSaves refreshKey={saved} />
       <SettingsRow onChanged={onApiBaseChanged} />

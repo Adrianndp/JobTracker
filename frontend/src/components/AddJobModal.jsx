@@ -50,26 +50,22 @@ export default function AddJobModal({ onClose, onAdd, onSave, onUpgrade, job }) 
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={e => e.stopPropagation()}>
+      <div
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="job-modal-title"
+        onClick={e => e.stopPropagation()}
+      >
         <div className={styles.modalHeader}>
-          <div className={styles.modalTitle}>
-            <div className={styles.modalIcon} style={isEdit ? { background: '#fef3c7', color: '#d97706' } : {}}>
-              {isEdit ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <rect x="2" y="7" width="20" height="14" rx="2" />
-                  <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-                </svg>
-              )}
-            </div>
-            <h2>{isEdit ? 'Edit Job' : 'Add New Job'}</h2>
+          <div>
+            <h2 id="job-modal-title" className={styles.modalTitle}>{isEdit ? 'Edit job' : 'Add a job'}</h2>
+            <p className={styles.modalSubtitle}>
+              {isEdit ? 'Update the details of this application.' : 'It goes into To Be Applied.'}
+            </p>
           </div>
-          <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -78,11 +74,9 @@ export default function AddJobModal({ onClose, onAdd, onSave, onUpgrade, job }) 
 
         <form onSubmit={handleSubmit} className={styles.form} noValidate>
           <div className={styles.field}>
-            <label className={styles.label}>
-              Job Title
-              <span className={styles.required}>*</span>
-            </label>
+            <label className={styles.label} htmlFor="job-name">Job title</label>
             <input
+              id="job-name"
               ref={firstInput}
               type="text"
               className={styles.input}
@@ -93,11 +87,9 @@ export default function AddJobModal({ onClose, onAdd, onSave, onUpgrade, job }) 
           </div>
 
           <div className={styles.field}>
-            <label className={styles.label}>
-              Company
-              <span className={styles.required}>*</span>
-            </label>
+            <label className={styles.label} htmlFor="job-company">Company</label>
             <input
+              id="job-company"
               type="text"
               className={styles.input}
               placeholder="e.g. Stripe"
@@ -107,8 +99,11 @@ export default function AddJobModal({ onClose, onAdd, onSave, onUpgrade, job }) 
           </div>
 
           <div className={styles.field}>
-            <label className={styles.label}>Job URL</label>
+            <label className={styles.label} htmlFor="job-link">
+              Posting URL <span className={styles.optional}>(optional)</span>
+            </label>
             <input
+              id="job-link"
               type="url"
               className={styles.input}
               placeholder="https://company.com/jobs/..."
@@ -118,11 +113,11 @@ export default function AddJobModal({ onClose, onAdd, onSave, onUpgrade, job }) 
           </div>
 
           <div className={styles.field}>
-            <label className={styles.label}>
-              Salary
-              <span className={styles.optional}>optional</span>
+            <label className={styles.label} htmlFor="job-salary">
+              Salary <span className={styles.optional}>(optional)</span>
             </label>
             <input
+              id="job-salary"
               type="text"
               className={styles.input}
               placeholder="e.g. €60,000 – €80,000 / year"
@@ -132,22 +127,22 @@ export default function AddJobModal({ onClose, onAdd, onSave, onUpgrade, job }) 
           </div>
 
           {isEdit && (
-            <div className={styles.field}>
-              <button
-                type="button"
-                className={`${styles.toggleBtn} ${form.had_interview ? styles.toggleBtnOn : ''}`}
-                onClick={toggle('had_interview')}
-              >
-                <span className={styles.toggleTrack}>
-                  <span className={styles.toggleThumb} />
-                </span>
-                Had an interview
-              </button>
-            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={form.had_interview}
+              className={`${styles.toggleBtn} ${form.had_interview ? styles.toggleBtnOn : ''}`}
+              onClick={toggle('had_interview')}
+            >
+              <span className={styles.toggleTrack}>
+                <span className={styles.toggleThumb} />
+              </span>
+              Had an interview
+            </button>
           )}
 
           {error && (
-            <p className={styles.error}>
+            <p className={styles.error} role="alert">
               {error}
               {limitHit && onUpgrade && (
                 <>
@@ -162,30 +157,11 @@ export default function AddJobModal({ onClose, onAdd, onSave, onUpgrade, job }) 
             <button type="button" className={styles.cancelBtn} onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className={`${styles.submitBtn} ${isEdit ? styles.submitBtnEdit : ''}`} disabled={loading}>
-              {loading ? (
-                <>
-                  <span className={styles.btnSpinner} />
-                  {isEdit ? 'Saving...' : 'Adding...'}
-                </>
-              ) : isEdit ? (
-                <>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                    <polyline points="17 21 17 13 7 13 7 21" />
-                    <polyline points="7 3 7 8 15 8" />
-                  </svg>
-                  Save Changes
-                </>
-              ) : (
-                <>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  Add to Board
-                </>
-              )}
+            <button type="submit" className={styles.submitBtn} disabled={loading}>
+              {loading && <span className={styles.btnSpinner} />}
+              {isEdit
+                ? (loading ? 'Saving…' : 'Save changes')
+                : (loading ? 'Adding…' : 'Add job')}
             </button>
           </div>
         </form>

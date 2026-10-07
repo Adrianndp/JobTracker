@@ -1,9 +1,7 @@
-.overlay { composes: overlay from './AddJobModal.module.css'; }
+.overlay { composes: backdrop from '../styles/controls.module.css'; }
 .modal {
-  composes: modal from './AddJobModal.module.css';
+  composes: dialog from '../styles/controls.module.css';
   max-width: 520px;
-  max-height: calc(100vh - 2rem);
-  overflow-y: auto;
   outline: none;
 }
 .closeBtn { composes: closeBtn from './AddJobModal.module.css'; flex-shrink: 0; }
@@ -15,19 +13,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.5rem 1.5rem 0;
+  padding: var(--space-6) var(--space-6) 0;
 }
 
 .title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #0f172a;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
 }
 
 /* ── Stepper ────────────────────────────────────── */
 .stepper {
   display: flex;
-  margin: 1.25rem 1.5rem 0;
+  margin: var(--space-5) var(--space-6) 0;
   padding: 0;
   list-style: none;
 }
@@ -38,7 +36,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--space-1-5);
 }
 
 /* The line joining each step to the previous one */
@@ -50,12 +48,12 @@
   left: -50%;
   height: 2px;
   margin: 0 18px;
-  background: #e2e8f0;
+  background: var(--border);
 }
 
 .stepper li.done::before,
 .stepper li.current::before {
-  background: #6366f1;
+  background: var(--accent);
 }
 
 .dot {
@@ -66,8 +64,8 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
 }
 
 .dot svg {
@@ -76,155 +74,154 @@
 }
 
 .todo .dot {
-  border: 2px solid #e2e8f0;
-  background: #fff;
-  color: #94a3b8;
+  border: 2px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-muted);
 }
 
 .current .dot {
-  background: #6366f1;
-  color: #fff;
-  box-shadow: 0 0 0 4px #e0e7ff;
+  background: var(--accent);
+  color: var(--text-on-brand);
+  box-shadow: 0 0 0 4px var(--brand-100);
 }
 
 .done .dot {
-  background: #6366f1;
-  color: #fff;
+  background: var(--accent);
+  color: var(--text-on-brand);
 }
 
 .stepLabel {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #94a3b8;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
 }
 
 .current .stepLabel,
 .done .stepLabel {
-  color: #334155;
+  color: var(--text-secondary);
 }
 
 /* ── Body ───────────────────────────────────────── */
 .body {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1.5rem;
+  gap: var(--space-4);
+  padding: var(--space-6);
 }
 
 .lead {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #0f172a;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
 }
 
 .options {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--space-2-5);
 }
 
 .option,
 .optionOn {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: var(--space-3);
   width: 100%;
-  padding: 0.9rem 1rem;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 12px;
-  background: #fff;
-  font: inherit;
+  padding: var(--space-4) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color var(--duration-fast), background var(--duration-fast);
 }
 
 .option:hover {
-  border-color: #cbd5e1;
+  border-color: var(--border-strong);
 }
 
 .optionOn {
-  border-color: #6366f1;
-  background: #f5f7ff;
+  border-color: var(--accent);
+  background: var(--accent-subtle);
 }
 
 .radio {
   flex: none;
   width: 18px;
   height: 18px;
-  border: 2px solid #cbd5e1;
+  border: 2px solid var(--border-strong);
   border-radius: 50%;
 }
 
 .optionOn .radio {
-  border: 5px solid #6366f1;
+  border: 5px solid var(--accent);
 }
 
 .optionText {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
-  font-size: 0.85rem;
-  color: #64748b;
+  gap: var(--space-0-5);
+  font-size: var(--text-base);
+  color: var(--text-muted);
 }
 
 .optionText strong {
-  font-size: 0.95rem;
-  color: #0f172a;
+  font-size: var(--text-md);
+  color: var(--text);
 }
 
 .optionPrice {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.2rem;
-  font-size: 1.1rem;
-  font-weight: 800;
-  color: #0f172a;
+  gap: var(--space-1);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
 .save {
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: #dcfce7;
-  color: #15803d;
-  font-size: 0.7rem;
-  font-weight: 700;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--success-subtle);
+  color: var(--success);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
 }
 
 /* ── Review ─────────────────────────────────────── */
 .summary {
   margin: 0;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
 }
 
 .summary > div {
   display: grid;
   grid-template-columns: 7rem 1fr;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  font-size: 0.875rem;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base);
 }
 
 .summary > div + div {
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--bg-muted);
 }
 
 .summary dt {
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .summary dd {
   margin: 0;
-  color: #0f172a;
+  color: var(--text);
 }
 
 .totalCell {
-  font-size: 1.05rem;
-  font-weight: 800;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
   font-variant-numeric: tabular-nums;
 }
 
@@ -232,8 +229,8 @@
   display: inline-block;
   width: 4.5rem;
   height: 1em;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #f1f5f9, #e2e8f0, #f1f5f9);
+  border-radius: var(--radius-xs);
+  background: linear-gradient(90deg, var(--bg-muted), var(--border), var(--bg-muted));
   background-size: 200% 100%;
   animation: shimmer 1.2s linear infinite;
 }
@@ -245,12 +242,12 @@
 .notes {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--space-1-5);
   margin: 0;
-  padding-left: 1.1rem;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  color: #64748b;
+  padding-left: var(--space-4);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
 }
 
 /* ── Payment / done ─────────────────────────────── */
@@ -258,26 +255,26 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.6rem;
-  padding: 1rem 0 0.5rem;
+  gap: var(--space-2-5);
+  padding: var(--space-4) 0 var(--space-2);
   text-align: center;
 }
 
 .center .actions {
-  margin-top: 0.75rem;
+  margin-top: var(--space-3);
 }
 
 .centerTitle {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #0f172a;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
 }
 
 .hint {
   max-width: 360px;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  color: #64748b;
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
 }
 
 .lockIcon,
@@ -290,13 +287,13 @@
 }
 
 .lockIcon {
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--accent-subtle);
+  color: var(--accent-hover);
 }
 
 .successIcon {
-  background: #dcfce7;
-  color: #16a34a;
+  background: var(--success-subtle);
+  color: var(--success);
 }
 
 .lockIcon svg,
@@ -308,8 +305,8 @@
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid #e2e8f0;
-  border-top-color: #6366f1;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }

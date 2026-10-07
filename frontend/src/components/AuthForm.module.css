@@ -1,0 +1,56 @@
+/* Form layout shared by LoginPage and ExtensionLogin, so the website's and the
+   extension's sign-in forms look the same. Controls come from the design system. */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.field {
+  composes: field from '../styles/controls.module.css';
+}
+
+.label {
+  composes: label from '../styles/controls.module.css';
+}
+
+.labelRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.input {
+  composes: input from '../styles/controls.module.css';
+  height: 40px;
+}
+
+.error {
+  composes: alertError from '../styles/controls.module.css';
+}
+
+.submitBtn {
+  composes: btn primary lg block from '../styles/controls.module.css';
+  margin-top: var(--space-1);
+}
+
+.btnSpinner {
+  composes: spinner from '../styles/controls.module.css';
+}
+
+.altAction {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* A text link; on <button> (same-page actions) and <a> (website links) */
+.linkBtn {
+  composes: link from '../styles/controls.module.css';
+}
+
+.labelRow .linkBtn {
+  font-size: var(--text-sm);
+}

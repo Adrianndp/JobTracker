@@ -1,0 +1,82 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  padding: var(--space-8) var(--space-4);
+  background:
+    radial-gradient(1200px 600px at 50% -10%, var(--brand-50), transparent 70%),
+    var(--bg-app);
+}
+
+.pageCompact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.pageCompact .card {
+  padding: var(--space-5);
+  box-shadow: var(--shadow-xs);
+}
+
+.pageCompact .brand {
+  margin-bottom: var(--space-5);
+}
+
+.card {
+  composes: surface from '../styles/controls.module.css';
+  width: 100%;
+  max-width: 400px;
+  padding: var(--space-8);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 479px) {
+  .card {
+    padding: var(--space-6) var(--space-5);
+  }
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-8);
+}
+
+.brandIcon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--gray-900);
+  color: var(--brand-400);
+}
+
+.brandName {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.subtitle {
+  margin-top: var(--space-1-5);
+  font-size: var(--text-base);
+  color: var(--text-muted);
+}
+
+.legal {
+  max-width: 400px;
+}

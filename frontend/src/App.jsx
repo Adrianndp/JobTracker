@@ -4,6 +4,7 @@ import AddJobModal from './components/AddJobModal'
 import CompanyFilter from './components/CompanyFilter'
 import ExportMenu from './components/ExportMenu'
 import LoginPage from './components/LoginPage'
+import ExtensionLogin from './components/ExtensionLogin'
 import AccountModal from './components/AccountModal'
 import LegalLinks from './components/LegalLinks'
 import PricingPage from './components/PricingPage'
@@ -38,9 +39,9 @@ function clearUrl() {
 }
 
 /**
- * authMode is passed straight to LoginPage: 'session' for the web app, 'token'
- * for the extension. onSignIn/onSignOut let the extension persist and clear the
- * bearer token; the web app needs neither.
+ * authMode is 'session' for the web app (LoginPage) and 'token' for the
+ * extension (ExtensionLogin). onSignIn/onSignOut let the extension persist and
+ * clear the bearer token; the web app needs neither.
  */
 export default function App({ authMode = 'session', onSignIn, onSignOut }) {
   const authStatus = useAuthStatus()
@@ -57,8 +58,9 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
   // { price } while the upgrade stepper is open
   const [upgrade, setUpgrade] = useState(route.price ? { price: route.price } : null)
   const [notice, setNotice] = useState('')
+  // Columns start open: a board that opens looking empty reads as lost data
   const [collapsedCols, setCollapsedCols] = useState(
-    () => Object.fromEntries(COLUMNS.map(c => [c.id, true]))
+    () => Object.fromEntries(COLUMNS.map(c => [c.id, false]))
   )
 
   // status: 'checking' | 'login' | 'authenticated'
@@ -155,9 +157,9 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
     setEditingJob(null)
   }
 
+  const nonEmptyCols = COLUMNS.filter(col => visibleJobs.some(j => j.status === col.id))
+  const allExpanded = nonEmptyCols.every(col => collapsedCols[col.id] === false)
   const toggleAllColumns = () => {
-    const nonEmptyCols = COLUMNS.filter(col => visibleJobs.some(j => j.status === col.id))
-    const allExpanded = nonEmptyCols.length > 0 && nonEmptyCols.every(col => collapsedCols[col.id] === false)
     setCollapsedCols(Object.fromEntries(COLUMNS.map(c => [c.id, allExpanded])))
   }
 
@@ -196,18 +198,19 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
         />
       )
     }
+    const signedIn = (username, grant) => {
+      // Drop ?mode=signup|forgot from an email link, so logging out shows the
+      // login form. An upgrade link keeps working: the route was read on load.
+      clearUrl()
+      onSignIn?.(username, grant)
+      setSession({ status: 'authenticated', username })
+      if (publicPricing || route.pricing) setView('pricing')
+    }
+    if (authMode === 'token') return <ExtensionLogin onAuthenticated={signedIn} />
     return (
       <LoginPage
-        authMode={authMode}
         onShowPlans={plans?.enabled ? () => setPublicPricing(true) : undefined}
-        onAuthenticated={(username, grant) => {
-          // Drop ?mode=signup|forgot from an email link, so logging out shows the
-          // login form. An upgrade link keeps working: the route was read on load.
-          clearUrl()
-          onSignIn?.(username, grant)
-          setSession({ status: 'authenticated', username })
-          if (publicPricing || route.pricing) setView('pricing')
-        }}
+        onAuthenticated={signedIn}
       />
     )
   }
@@ -256,44 +259,50 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
     <div className={styles.app}>
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <button
-            className={styles.brand}
-            onClick={toggleAllColumns}
-            title="Expand or collapse all columns"
-          >
-            <span className={styles.brandIcon}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <div className={styles.headerLeft}>
+            <span className={styles.brandIcon} aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="7" width="20" height="14" rx="2" />
                 <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
               </svg>
             </span>
-            <h1 className={styles.brandName}>Job Tracker</h1>
-          </button>
-          <span className={styles.boardTitle}>{auth.username}'s Job Board</span>
+            <span className={styles.brandName}>Job Tracker</span>
+            <span className={styles.crumbSep} aria-hidden="true">/</span>
+            <h1 className={styles.boardTitle}>{auth.username}&rsquo;s board</h1>
+          </div>
           <div className={styles.headerActions}>
             {plan?.enabled && (
-              <button
-                className={plan.plan === 'pro' ? styles.planChipPro : styles.planChip}
-                onClick={plan.plan === 'pro' ? () => setShowAccount(true) : showPlans}
-                title={plan.plan === 'pro' ? 'Pro plan' : 'Active applications on the free plan. See plans'}
-              >
-                {plan.plan === 'pro' ? 'Pro' : `${plan.active_jobs}/${plan.active_limit}`}
-              </button>
+              plan.plan === 'pro' ? (
+                <button className={styles.planChipPro} onClick={() => setShowAccount(true)} title="Pro plan">
+                  Pro
+                </button>
+              ) : (
+                <button
+                  className={styles.planChip}
+                  onClick={showPlans}
+                  title="Active applications on the free plan. See plans"
+                >
+                  <span className={styles.planMeter} aria-hidden="true">
+                    <span style={{ width: `${Math.min(100, (plan.active_jobs / plan.active_limit) * 100)}%` }} />
+                  </span>
+                  {plan.active_jobs}/{plan.active_limit} active
+                </button>
+              )
             )}
-            <button className={styles.logoutBtn} onClick={() => setShowAccount(true)} title="Account" aria-label="Account">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+            <button className={styles.headerBtn} onClick={() => setShowAccount(true)} title="Account" aria-label="Account">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="8" r="4" />
                 <path d="M4 21a8 8 0 0 1 16 0" />
               </svg>
-              <span className={styles.logoutLabel}>Account</span>
+              <span className={styles.headerBtnLabel}>Account</span>
             </button>
-            <button className={styles.logoutBtn} onClick={handleLogout} title="Log out" aria-label="Log out">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+            <button className={styles.headerBtn} onClick={handleLogout} title="Log out" aria-label="Log out">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                 <polyline points="16 17 21 12 16 7" />
                 <line x1="21" y1="12" x2="9" y2="12" />
               </svg>
-              <span className={styles.logoutLabel}>Log out</span>
+              <span className={styles.headerBtnLabel}>Log out</span>
             </button>
           </div>
         </div>
@@ -309,14 +318,19 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
                   See plans
                 </button>
               )}
-              <button className={styles.noticeClose} onClick={() => setNotice('')} aria-label="Dismiss">×</button>
+              <button className={styles.noticeClose} onClick={() => setNotice('')} aria-label="Dismiss">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
             </div>
           </div>
         )}
         {loading ? (
           <div className={styles.loading}>
             <div className={styles.spinner} />
-            <span>Loading jobs...</span>
+            <span>Loading jobs…</span>
           </div>
         ) : (
           <>
@@ -327,13 +341,23 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
                 onFiltersChange={setCompanyFilters}
               />
               <div className={styles.filterActions}>
+                {nonEmptyCols.length > 0 && companyFilters.length === 0 && (
+                  <button className={styles.toolbarBtn} onClick={toggleAllColumns}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      {allExpanded
+                        ? <><polyline points="7 20 12 15 17 20" /><polyline points="7 4 12 9 17 4" /></>
+                        : <><polyline points="7 15 12 20 17 15" /><polyline points="7 9 12 4 17 9" /></>}
+                    </svg>
+                    {allExpanded ? 'Collapse all' : 'Expand all'}
+                  </button>
+                )}
                 <ExportMenu jobs={visibleJobs} boardTitle={`${auth.username}'s Job Board`} />
                 <button className={styles.addBtn} onClick={() => setShowModal(true)}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round">
                     <line x1="12" y1="5" x2="12" y2="19" />
                     <line x1="5" y1="12" x2="19" y2="12" />
                   </svg>
-                  Add Job
+                  Add job
                 </button>
               </div>
             </div>

@@ -47,8 +47,11 @@ frontend/src/
   App.jsx           auth gate, board state, API calls
   api.ts            fetch helper + hooks (shared with the extension)
   lib/              transport.ts (api base + auth scheme), safeUrl.ts, paddle.ts (checkout)
-  components/       LoginPage, KanbanBoard, KanbanColumn, JobCard, AddJobModal, CompanyFilter,
-                    PricingPage, UpgradeFlow (plan → review → pay → done),
+  styles/           tokens.css (colours, type, spacing, ...) and controls.module.css (shared
+                    buttons, inputs, menus, modals), used by the web app and the extension pages
+  components/       LoginPage (website sign-in flows), ExtensionLogin (the extension's token
+                    sign-in), AuthCard (the frame both share), KanbanBoard, KanbanColumn,
+                    JobCard, AddJobModal, CompanyFilter, ExportMenu, PricingPage, UpgradeFlow (plan → review → pay → done),
                     AccountModal (plan & billing, invoices, delete account), LegalLinks
 frontend/public/legal/  Impressum, Datenschutz, AGB (drafts with placeholders)
 frontend/extension/

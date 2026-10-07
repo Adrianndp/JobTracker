@@ -1,0 +1,160 @@
+/*
+ * Design tokens: the only place raw colours, sizes, radii, shadows and timings
+ * are written down. Components use these variables (and the shared controls in
+ * controls.module.css), never literal values. See the ui-ux-pro-max skill.
+ */
+
+:root {
+  /* ── Neutrals (slate) ─────────────────────────────── */
+  --gray-0: #ffffff;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-150: #eaeff5;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --gray-900: #0f172a;
+
+  /* ── Brand (indigo) ───────────────────────────────── */
+  --brand-50: #eef2ff;
+  --brand-100: #e0e7ff;
+  --brand-200: #c7d2fe;
+  --brand-400: #818cf8;
+  --brand-500: #6366f1;
+  --brand-600: #4f46e5;
+  --brand-700: #4338ca;
+  --brand-800: #3730a3;
+
+  /* ── Semantic colours ─────────────────────────────── */
+  --bg-app: var(--gray-50);
+  --bg-surface: var(--gray-0);
+  --bg-subtle: var(--gray-50);
+  --bg-muted: var(--gray-100);
+  --bg-hover: var(--gray-100);
+  --bg-active: var(--gray-150);
+  --bg-header: rgba(255, 255, 255, 0.85);   /* translucent, over a backdrop blur */
+
+  --border: var(--gray-200);
+  --border-strong: var(--gray-300);
+
+  --text: var(--gray-900);
+  --text-secondary: var(--gray-600);
+  --text-muted: var(--gray-500);     /* lowest contrast allowed for text (4.7:1 on white) */
+  --text-faint: var(--gray-400);     /* icons, placeholders, decoration only — not text */
+  --text-on-brand: #ffffff;
+
+  /* brand-600 rather than 500 for anything carrying white text: 6.3:1 vs 4.5:1 */
+  --accent: var(--brand-600);
+  --accent-hover: var(--brand-700);
+  --accent-text: var(--brand-600);
+  --accent-subtle: var(--brand-50);
+  --accent-border: var(--brand-200);
+
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --danger-subtle: #fef2f2;
+  --danger-border: #fecaca;
+  --success: #15803d;
+  --success-subtle: #f0fdf4;
+  --success-border: #bbf7d0;
+  --warning: #b45309;
+  --warning-subtle: #fffbeb;
+  --warning-border: #fde68a;
+  --interview: #6d28d9;              /* "Interviewed" badge, on cards of any status */
+  --interview-subtle: #f5f3ff;
+
+  /* Job status colours are not tokens: they live in KanbanBoard.jsx COLUMNS
+     (the PDF export needs them as plain values) and reach CSS as --col-color. */
+
+  /* ── Type ─────────────────────────────────────────── */
+  --font-sans: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-2xs: 0.6875rem;  /* 11px — badges only */
+  --text-xs: 0.75rem;     /* 12px — meta, captions */
+  --text-sm: 0.8125rem;   /* 13px — secondary UI, labels */
+  --text-base: 0.875rem;  /* 14px — body, inputs, buttons */
+  --text-md: 1rem;        /* 16px */
+  --text-lg: 1.125rem;    /* 18px — modal titles */
+  --text-xl: 1.375rem;    /* 22px — page titles */
+  --text-2xl: 1.75rem;    /* 28px — prices */
+  --text-3xl: 2.25rem;    /* 36px — hero */
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --leading-tight: 1.25;
+  --leading-snug: 1.4;
+  --leading-normal: 1.55;
+
+  --tracking-tight: -0.015em;
+  --tracking-caps: 0.06em;
+
+  /* ── Space (4px grid) ─────────────────────────────── */
+  --space-0-5: 0.125rem;
+  --space-1: 0.25rem;
+  --space-1-5: 0.375rem;
+  --space-2: 0.5rem;
+  --space-2-5: 0.625rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* ── Radius ───────────────────────────────────────── */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 999px;
+
+  /* ── Elevation ────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.05);
+  --shadow-overlay: 0 24px 64px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(15, 23, 42, 0.06);
+  --backdrop: rgba(15, 23, 42, 0.45);
+
+  --focus-ring: 0 0 0 3px rgba(79, 70, 229, 0.28);
+
+  /* ── Motion ───────────────────────────────────────── */
+  --duration-fast: 120ms;
+  --duration: 180ms;
+  --duration-slow: 260ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ── Layout ───────────────────────────────────────── */
+  --header-height: 56px;
+  --page-max: 1800px;
+  --page-gutter: var(--space-6);
+  --control-height: 36px;
+  --control-height-sm: 30px;
+
+  --z-header: 100;
+  --z-dropdown: 200;
+  --z-modal: 1000;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --page-gutter: var(--space-10);
+  }
+}
+
+@media (max-width: 639px) {
+  :root {
+    --page-gutter: var(--space-4);
+  }
+}

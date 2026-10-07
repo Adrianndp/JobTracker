@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { ApiError, useLogin, usePasswordReset, useSignup, useTokenLogin, useVerifyEmail, webAppUrl } from '../api'
-import LegalLinks from './LegalLinks'
+import { ApiError, useLogin, usePasswordReset, useSignup, useVerifyEmail, webAppUrl } from '../api'
+import AuthCard from './AuthCard'
+import ui from './AuthForm.module.css'
 import styles from './LoginPage.module.css'
 
 const MIN_PASSWORD_LENGTH = 10
@@ -13,7 +14,7 @@ function initialMode() {
 }
 
 const TITLES = {
-  login: 'Login',
+  login: 'Welcome back',
   signup: 'Create your account',
   verify: 'Check your inbox',
   forgot: 'Reset your password',
@@ -21,16 +22,12 @@ const TITLES = {
 }
 
 /**
- * authMode 'session' (default) is the web app: allauth handles sign-up, login,
- * email verification and password reset, all with emailed codes typed in here.
- * 'token' is the extension: email + password exchanged for a bearer token,
- * because a cross-origin extension page never receives the cookie. Everything
- * else about the account happens on the website.
- * onAuthenticated(username, grant) -- grant is only present in token mode.
+ * The website's sign-in: allauth handles sign-up, login, email verification and
+ * password reset, all with emailed codes typed in here, on the session cookie.
+ * The extension can't use that cookie and has its own ExtensionLogin.
  */
-export default function LoginPage({ onAuthenticated, onShowPlans, authMode = 'session' }) {
-  const isTokenMode = authMode === 'token'
-  const [mode, setMode] = useState(isTokenMode ? 'login' : initialMode)
+export default function LoginPage({ onAuthenticated, onShowPlans }) {
+  const [mode, setMode] = useState(initialMode)
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -41,7 +38,6 @@ export default function LoginPage({ onAuthenticated, onShowPlans, authMode = 'se
   const [loading, setLoading] = useState(false)
   const { login } = useLogin()
   const { signup } = useSignup()
-  const { tokenLogin } = useTokenLogin()
   const { verifyEmail, resendVerification } = useVerifyEmail()
   const { requestPasswordReset, resetPassword } = usePasswordReset()
 
@@ -91,11 +87,6 @@ export default function LoginPage({ onAuthenticated, onShowPlans, authMode = 'se
     setError('')
     setLoading(true)
     try {
-      if (isTokenMode) {
-        const grant = await tokenLogin({ email: email.trim(), password, device_name: 'Chrome extension' })
-        onAuthenticated(grant.username, grant)
-        return
-      }
       if (mode === 'login') follow(await login({ email: email.trim(), password }))
       if (mode === 'signup') follow(await signup({ email: email.trim(), username: username.trim(), password }))
       if (mode === 'verify') follow(await verifyEmail(code.trim()))
@@ -126,9 +117,7 @@ export default function LoginPage({ onAuthenticated, onShowPlans, authMode = 'se
   }
 
   const subtitle = {
-    login: isTokenMode
-      ? 'Sign in to connect this browser to your tracker.'
-      : 'Welcome back. Log in to see your board.',
+    login: 'Log in to see your board.',
     signup: 'Track every application on one board. Free for up to 30 active applications.',
     verify: 'Enter the code we emailed you to confirm your address.',
     forgot: 'Enter your email and we will send you a reset code.',
@@ -136,180 +125,158 @@ export default function LoginPage({ onAuthenticated, onShowPlans, authMode = 'se
   }[mode]
 
   const submitLabel = {
-    login: ['Login', 'Logging in...'],
-    signup: ['Create account', 'Creating account...'],
-    verify: ['Confirm email', 'Confirming...'],
-    forgot: ['Send code', 'Sending...'],
-    reset: ['Set new password', 'Saving...'],
+    login: ['Log in', 'Logging in…'],
+    signup: ['Create account', 'Creating account…'],
+    verify: ['Confirm email', 'Confirming…'],
+    forgot: ['Send code', 'Sending…'],
+    reset: ['Set new password', 'Saving…'],
   }[mode][loading ? 1 : 0]
 
   const showEmail = mode === 'login' || mode === 'signup' || mode === 'forgot'
   const showNewPassword = mode === 'signup' || mode === 'reset'
 
   return (
-    <div className={styles.page}>
-      <div className={styles.card}>
-        <div className={styles.brand}>
-          <span className={styles.brandIcon}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="7" width="20" height="14" rx="2" />
-              <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-            </svg>
-          </span>
-          <span className={styles.brandName}>Job Tracker</span>
-        </div>
+    <AuthCard title={TITLES[mode]} subtitle={subtitle}>
+      <form onSubmit={handleSubmit} className={ui.form} noValidate>
+        {notice && <p className={styles.notice} role="status">{notice}</p>}
 
-        <h1 className={styles.title}>{TITLES[mode]}</h1>
-        <p className={styles.subtitle}>{subtitle}</p>
+        {showEmail && (
+          <div className={ui.field}>
+            <label className={ui.label} htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              className={ui.input}
+              autoComplete="email"
+              autoFocus
+              placeholder="you@example.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} className={styles.form} noValidate>
-          {notice && <p className={styles.notice} role="status">{notice}</p>}
+        {mode === 'signup' && (
+          <div className={ui.field}>
+            <label className={ui.label} htmlFor="username">Username</label>
+            <input
+              id="username"
+              className={ui.input}
+              autoComplete="username"
+              placeholder="Shown on your board"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+            />
+          </div>
+        )}
 
-          {showEmail && (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="email">Email</label>
-              <input
-                id="email"
-                type="email"
-                className={styles.input}
-                autoComplete="email"
-                autoFocus
-                placeholder="you@example.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-              />
-            </div>
-          )}
+        {(mode === 'verify' || mode === 'reset') && (
+          <div className={ui.field}>
+            <label className={ui.label} htmlFor="code">Code</label>
+            <input
+              id="code"
+              className={`${ui.input} ${styles.codeInput}`}
+              autoComplete="one-time-code"
+              autoCapitalize="characters"
+              autoFocus
+              placeholder="XXXX-XXXX"
+              value={code}
+              onChange={e => setCode(e.target.value.toUpperCase())}
+            />
+          </div>
+        )}
 
-          {mode === 'signup' && (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="username">Username</label>
-              <input
-                id="username"
-                className={styles.input}
-                autoComplete="username"
-                placeholder="Shown on your board"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-              />
-            </div>
-          )}
-
-          {(mode === 'verify' || mode === 'reset') && (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="code">Code</label>
-              <input
-                id="code"
-                className={`${styles.input} ${styles.codeInput}`}
-                autoComplete="one-time-code"
-                autoCapitalize="characters"
-                autoFocus
-                placeholder="XXXX-XXXX"
-                value={code}
-                onChange={e => setCode(e.target.value.toUpperCase())}
-              />
-            </div>
-          )}
-
-          {(mode === 'login' || showNewPassword) && (
-            <div className={styles.field}>
-              <div className={styles.labelRow}>
-                <label className={styles.label} htmlFor="password">
-                  {mode === 'reset' ? 'New password' : 'Password'}
-                </label>
-                {mode === 'login' && !isTokenMode && (
-                  <button type="button" className={styles.linkBtn} onClick={() => switchMode('forgot')}>
-                    Forgot password?
-                  </button>
-                )}
-              </div>
-              <input
-                id="password"
-                type="password"
-                className={styles.input}
-                autoComplete={showNewPassword ? 'new-password' : 'current-password'}
-                placeholder={showNewPassword ? `At least ${MIN_PASSWORD_LENGTH} characters` : ''}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
-            </div>
-          )}
-
-          {showNewPassword && (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="confirm">Confirm password</label>
-              <input
-                id="confirm"
-                type="password"
-                className={styles.input}
-                autoComplete="new-password"
-                value={confirm}
-                onChange={e => setConfirm(e.target.value)}
-              />
-            </div>
-          )}
-
-          {error && <p className={styles.error} role="alert">{error}</p>}
-
-          <button type="submit" className={styles.submitBtn} disabled={loading}>
-            {loading && <span className={styles.btnSpinner} />}
-            {submitLabel}
-          </button>
-
-          {mode === 'signup' && (
-            <p className={styles.terms}>
-              By creating an account you accept the{' '}
-              <a href={webAppUrl('/legal/agb.html')} target="_blank" rel="noopener noreferrer">terms (AGB)</a>
-              {' '}and have read the{' '}
-              <a href={webAppUrl('/legal/datenschutz.html')} target="_blank" rel="noopener noreferrer">privacy policy</a>.
-            </p>
-          )}
-
-          {!isTokenMode && (
-            <p className={styles.altAction}>
+        {(mode === 'login' || showNewPassword) && (
+          <div className={ui.field}>
+            <div className={ui.labelRow}>
+              <label className={ui.label} htmlFor="password">
+                {mode === 'reset' ? 'New password' : 'Password'}
+              </label>
               {mode === 'login' && (
-                <>Don&rsquo;t have an account?{' '}
-                  <button type="button" className={styles.linkBtn} onClick={() => switchMode('signup')}>
-                    Sign up
-                  </button>
-                </>
-              )}
-              {mode === 'signup' && (
-                <>Already have an account?{' '}
-                  <button type="button" className={styles.linkBtn} onClick={() => switchMode('login')}>
-                    Log in
-                  </button>
-                </>
-              )}
-              {mode === 'verify' && (
-                <>Didn&rsquo;t get it?{' '}
-                  <button type="button" className={styles.linkBtn} onClick={resend}>
-                    Send a new code
-                  </button>
-                </>
-              )}
-              {(mode === 'forgot' || mode === 'reset') && (
-                <button type="button" className={styles.linkBtn} onClick={() => switchMode('login')}>
-                  Back to login
+                <button type="button" className={ui.linkBtn} onClick={() => switchMode('forgot')}>
+                  Forgot password?
                 </button>
               )}
-            </p>
-          )}
+            </div>
+            <input
+              id="password"
+              type="password"
+              className={ui.input}
+              autoComplete={showNewPassword ? 'new-password' : 'current-password'}
+              placeholder={showNewPassword ? `At least ${MIN_PASSWORD_LENGTH} characters` : ''}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+          </div>
+        )}
 
-          {!isTokenMode && onShowPlans && (mode === 'login' || mode === 'signup') && (
-            <p className={styles.altAction}>
-              <button type="button" className={styles.linkBtn} onClick={onShowPlans}>Plans &amp; pricing</button>
-            </p>
-          )}
+        {showNewPassword && (
+          <div className={ui.field}>
+            <label className={ui.label} htmlFor="confirm">Confirm password</label>
+            <input
+              id="confirm"
+              type="password"
+              className={ui.input}
+              autoComplete="new-password"
+              value={confirm}
+              onChange={e => setConfirm(e.target.value)}
+            />
+          </div>
+        )}
 
-          {isTokenMode && (
-            <p className={styles.altAction}>
-              New here or forgot your password? Use the website, then sign in here.
-            </p>
+        {error && <p className={ui.error} role="alert">{error}</p>}
+
+        <button type="submit" className={ui.submitBtn} disabled={loading}>
+          {loading && <span className={ui.btnSpinner} />}
+          {submitLabel}
+        </button>
+
+        {mode === 'signup' && (
+          <p className={styles.terms}>
+            By creating an account you accept the{' '}
+            <a href={webAppUrl('/legal/agb.html')} target="_blank" rel="noopener noreferrer">terms (AGB)</a>
+            {' '}and have read the{' '}
+            <a href={webAppUrl('/legal/datenschutz.html')} target="_blank" rel="noopener noreferrer">privacy policy</a>.
+          </p>
+        )}
+
+        <div className={styles.divider} />
+
+        <p className={ui.altAction}>
+          {mode === 'login' && (
+            <>Don&rsquo;t have an account?{' '}
+              <button type="button" className={ui.linkBtn} onClick={() => switchMode('signup')}>
+                Sign up
+              </button>
+            </>
           )}
-        </form>
-      </div>
-      <LegalLinks className={styles.legal} />
-    </div>
+          {mode === 'signup' && (
+            <>Already have an account?{' '}
+              <button type="button" className={ui.linkBtn} onClick={() => switchMode('login')}>
+                Log in
+              </button>
+            </>
+          )}
+          {mode === 'verify' && (
+            <>Didn&rsquo;t get it?{' '}
+              <button type="button" className={ui.linkBtn} onClick={resend}>
+                Send a new code
+              </button>
+            </>
+          )}
+          {(mode === 'forgot' || mode === 'reset') && (
+            <button type="button" className={ui.linkBtn} onClick={() => switchMode('login')}>
+              Back to login
+            </button>
+          )}
+          {onShowPlans && (mode === 'login' || mode === 'signup') && (
+            <>
+              {' · '}
+              <button type="button" className={ui.linkBtn} onClick={onShowPlans}>Plans &amp; pricing</button>
+            </>
+          )}
+        </p>
+      </form>
+    </AuthCard>
   )
 }

@@ -1,14 +1,25 @@
 .bar {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  background: #fff;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 0.5rem 0.85rem;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  gap: var(--space-2);
   width: 100%;
-  max-width: 680px;
+  max-width: 520px;
+  min-height: var(--control-height);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  transition: border-color var(--duration-fast) var(--ease), box-shadow var(--duration-fast) var(--ease);
+}
+
+.bar:hover {
+  border-color: var(--gray-400);
+}
+
+.bar:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
 }
 
 @media (max-width: 639px) {
@@ -18,49 +29,48 @@
 }
 
 .searchIcon {
-  color: #94a3b8;
   flex-shrink: 0;
+  color: var(--text-faint);
 }
 
 .inner {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
-  flex: 1;
-  min-width: 0;
+  gap: var(--space-1);
 }
 
 /* ── Active filter chips ─────────────────────────── */
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  background: #eef2ff;
-  color: #4338ca;
-  border: 1px solid #c7d2fe;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 3px 6px 3px 8px;
+  gap: var(--space-1);
+  height: 24px;
+  padding: 0 var(--space-1) 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--accent-subtle);
+  color: var(--brand-700);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
   white-space: nowrap;
 }
 
 .chipX {
-  background: none;
-  border: none;
-  padding: 1px;
-  cursor: pointer;
-  color: #818cf8;
   display: flex;
   align-items: center;
-  border-radius: 3px;
-  transition: color 0.15s, background 0.15s;
+  padding: var(--space-0-5);
+  border: none;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--brand-400);
+  cursor: pointer;
 }
 
 .chipX:hover {
-  color: #4338ca;
-  background: #c7d2fe;
+  color: var(--brand-700);
+  background: var(--brand-100);
 }
 
 /* ── Text input ──────────────────────────────────── */
@@ -72,84 +82,40 @@
 
 .input {
   width: 100%;
+  height: 26px;
   border: none;
   outline: none;
-  font-size: 0.855rem;
-  color: #1e293b;
   background: transparent;
-  font-family: inherit;
-  padding: 2px 0;
+  color: var(--text);
+  font-size: var(--text-base);
+}
+
+.input:focus-visible {
+  outline: none;
 }
 
 .input::placeholder {
-  color: #94a3b8;
+  color: var(--text-faint);
 }
 
 /* ── Suggestions dropdown ────────────────────────── */
 .dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: -0.75rem;
-  min-width: 200px;
-  background: #fff;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-  z-index: 200;
-  padding: 0.35rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+  composes: menu from '../styles/controls.module.css';
+  top: calc(100% + var(--space-2));
+  left: calc(-1 * var(--space-2));
+  min-width: 220px;
+  max-height: 320px;
+  overflow-y: auto;
 }
 
 .option {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.45rem 0.6rem;
-  background: none;
-  border: none;
-  border-radius: 7px;
-  font-size: 0.845rem;
-  font-weight: 500;
-  color: #374151;
-  font-family: inherit;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.12s, color 0.12s;
-}
-
-.option svg {
-  color: #94a3b8;
-  flex-shrink: 0;
-}
-
-.option:hover {
-  background: #eef2ff;
-  color: #4338ca;
-}
-
-.option:hover svg {
-  color: #6366f1;
+  composes: menuItem from '../styles/controls.module.css';
 }
 
 /* ── Clear all ───────────────────────────────────── */
 .clearAll {
-  background: none;
-  border: none;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #94a3b8;
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  white-space: nowrap;
-  font-family: inherit;
+  composes: btn ghost sm from '../styles/controls.module.css';
   flex-shrink: 0;
-  transition: color 0.15s;
-}
-
-.clearAll:hover {
-  color: #ef4444;
+  height: 26px;
+  color: var(--text-muted);
 }

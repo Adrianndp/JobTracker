@@ -346,6 +346,12 @@ EU hosting.
 
 ### 6.5 Launch
 
+- **UI polish ✅ done 2026-10-07:** design tokens (`frontend/src/styles/tokens.css`) and shared
+  controls (`controls.module.css`, used through `composes`) for the web app and extension pages;
+  light header, columns open by default, an "Expand/Collapse all" toolbar button instead of the
+  hidden logo click, hover actions on cards, one modal/menu/button style everywhere. Rules for
+  future UI work are in the `ui-ux-pro-max` skill. Open: content-script button
+  (`trackerButton.js`) still has its own inline styles; no dark mode.
 - Landing page with pricing, German and English.
 - Support email address and a short FAQ.
 - Positioning: "Made for the German job market, hosted in the EU, your data is never sold."
