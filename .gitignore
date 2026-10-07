@@ -20,3 +20,6 @@ ext-key.pem
 .DS_Store
 .env
 backups/
+
+# Claude Code: personal overrides (the shared .claude/settings.json is committed)
+.claude/settings.local.json

@@ -61,6 +61,7 @@ frontend/extension/
   src/stepstone.js  content script: the same button on StepStone job pages
   src/trackerButton.js  the button and page watcher the content scripts share
 scripts/backup-db.sh  nightly pg_dump for the docker-compose deployment
+scripts/check.sh      migration check, backend tests and all builds, in one command
 ```
 
 ## Accounts
@@ -288,6 +289,9 @@ unpacked** → pick `frontend/dist-extension`.
 ```bash
 cd backend && python manage.py test
 ```
+
+`scripts/check.sh` runs that (loading `.env` for you) plus `makemigrations --check` and
+`npm run build:all`; `scripts/check.sh backend jobs` runs one app's tests.
 
 This uses whatever `DATABASE_URL` points at (creating and dropping a `test_` database), so run it with the
 Postgres URL set to test what production runs on.
