@@ -288,6 +288,34 @@ Env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID(S)`.
 - Gunicorn workers sized to CPU; Postgres connection count stays under `max_connections`
   (`CONN_MAX_AGE` is already 60 s).
 
+### Go-live runbook (added 2026-10-10)
+
+State on 2026-10-10: 99 backend tests green, no pending migrations, web + extension builds pass.
+Order matters: Paddle reviews the *live* domain (pricing, AGB, Datenschutz, refund terms), and the
+store extension needs the final API host, so the server comes before both.
+
+1. **Accounts & decisions (you):** EU VPS (e.g. Hetzner CX22, Ubuntu 24.04), domain, Resend,
+   Paddle (sandbox + live), Sentry, Chrome Web Store developer account. Decide: start fresh in
+   production, or restore the local 76 jobs from a `pg_dump`.
+2. **TLS in the repo (code):** docker-compose serves plain HTTP on `3000:80`, published on all
+   interfaces (Docker bypasses ufw). Add Caddy for Let's Encrypt in front of the frontend nginx,
+   bind nginx to the internal network only, `TRUSTED_PROXY_COUNT=2`, and make nginx forward the
+   incoming `X-Forwarded-Proto` instead of `$scheme` -- otherwise `HTTPS=1` redirect-loops.
+3. **Server:** SSH keys only, ufw (22/80/443), Docker, clone, production `.env` (`SECRET_KEY`,
+   `POSTGRES_PASSWORD`, `ALLOWED_HOSTS`, `HTTPS=1`, `CSRF_TRUSTED_ORIGINS=https://<domain>`),
+   `docker compose up -d --build`, DNS A/AAAA records, check `https://<domain>/api/health`.
+4. **Email:** verify the domain in Resend (SPF/DKIM DNS records), set `RESEND_API_KEY` and
+   `DEFAULT_FROM_EMAIL`; sign up with a fresh address and receive the code.
+5. **Legal:** fill every placeholder in `frontend/public/legal/` (Impressum needs a real postal
+   address), add refund/withdrawal terms naming Paddle as reseller; get it reviewed.
+6. **Paddle:** sandbox products/prices/webhook against the live domain, one sandbox purchase,
+   cancel, portal; CSP check in DevTools. Then domain approval and live keys.
+7. **Extension:** `VITE_API_BASE=https://<domain> npm run build:ext:store`, upload as a draft to
+   get the store id, set `CORS_ALLOWED_ORIGINS=chrome-extension://<id>`, submit for review.
+8. **Operations:** backup cron with `BACKUP_COPY` off the server + one test restore, `SENTRY_DSN`,
+   uptime monitor on `/api/health`.
+9. **Smoke test as a stranger** (Phase 6 exit criteria), then announce.
+
 ## Phase 6 — Go to market (added 2026-10-01)
 
 The tracker plus one-click save is a crowded category with strong free options (Teal, Huntr,
