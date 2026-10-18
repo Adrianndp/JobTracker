@@ -224,61 +224,82 @@ npm run dev
 `python manage.py seed --username Adrian` adds sample jobs (needs `--username`
 because every job belongs to an account).
 
-## Run Docker + Chrome extension + Pro account:
+## Run Docker + Chrome Extension + Pro Account
 
-1. Configure .env (first time only)
+### 1. Configure `.env` (first time only)
 
 In the repo root:
+
+```bash
 echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> .env
 echo "CORS_ALLOWED_ORIGINS=chrome-extension://nlpoghnjoenjhflgmpglnaodoncokahe" >> .env
-The second line lets the extension call the backend. You can skip this step: your .env already has both.
+```
 
-2. Start the stack
+The second line lets the extension call the backend.
 
+> You can skip this step if your `.env` already has both values.
+
+### 2. Start the stack
+
+```bash
 docker compose up --build -d
 docker compose ps        # wait until backend shows "healthy"
-The web app runs at http://localhost:3000 and the API at http://localhost:5001. The extension talks to the API directly on port 5001.
+```
 
-3. Create an account (new setups only)
+- Web app: <http://localhost:3000>
+- API: <http://localhost:5001>
 
-1. Open http://localhost:3000 and choose Sign up: email, username, and a password of at least 10 characters. For example example@hotmail.com
+The extension talks to the API directly on port `5001`.
+
+### 3. Create an account (new setups only)
+
+1. Open <http://localhost:3000> and choose **Sign up**. Enter an email, a username, and a password of at least 10 characters (for example, `example@hotmail.com`).
 2. Get the verification code from the backend log and enter it:
-docker compose logs backend | grep -i -A3 code
 
-4. Make the account Pro
+   ```bash
+   docker compose logs backend | grep -i -A3 code
+   ```
 
+### 4. Make the account Pro
+
+```bash
 docker compose exec backend python manage.py billing_comp example@hotmail.com
-It should print example@hotmail.com now has complimentary Pro. Reload http://localhost:3000, and the plan chip in the header should show Pro. To undo it, add --off.
+```
 
-Pro is stored in the Docker database, so it applies only to Docker. Your local localdb doesn't change.
+It should print `example@hotmail.com now has complimentary Pro`. Reload <http://localhost:3000>, and the plan chip in the header should show **Pro**.
 
-5. Build the extension
+To undo it, add `--off`:
 
-cd frontend
-npm install              # first time only
-npm run build:ext        # output goes to frontend/dist-extension
-Already done: I just ran this build, so dist-extension is up to date.
+```bash
+docker compose exec backend python manage.py billing_comp example@hotmail.com --off
+```
 
-6. Load it in Chrome
+> **Note:** Pro is stored in the Docker database, so it applies only to Docker. Your local `localdb` doesn't change.
 
-1. Go to chrome://extensions and turn on Developer mode (top right).
-2. Click Load unpacked and pick frontend/dist-extension. If an older copy is already loaded, click its reload icon instead.
-3. Check that the ID shown is nlpoghnjoenjhflgmpglnaodoncokahe.
-
-7. Sign in to the extension
-
-1. Open the extension's side panel from the toolbar icon. Pin it first if it's hidden under the puzzle icon.
-2. Sign in with the same email and password. The account must already be verified, which yours is.
-
-8. Try it
-
-Open a job posting on LinkedIn, XING or StepStone and click Save to Job Tracker next to Apply. The job appears in To Be Applied on http://localhost:3000.
+### 5. Build the extension
 
 ```bash
 cd frontend
-npm install
-npm run build:ext        # or build:all to build the web app too
+npm install              # first time only
+npm run build:ext        # output goes to frontend/dist-extension
 ```
+
+Use `npm run build:all` instead to build the web app too.
+
+### 6. Load it in Chrome
+
+1. Go to `chrome://extensions` and turn on **Developer mode** (top right).
+2. Click **Load unpacked** and pick `frontend/dist-extension`. If an older copy is already loaded, click its reload icon instead.
+3. Check that the ID shown is `nlpoghnjoenjhflgmpglnaodoncokahe`.
+
+### 7. Sign in to the extension
+
+1. Open the extension's side panel from the toolbar icon. Pin it first if it's hidden under the puzzle icon.
+2. Sign in with the same email and password. The account must already be verified.
+
+### 8. Try it
+
+Open a job posting on LinkedIn, XING, or StepStone and click **Save to Job Tracker** next to Apply. The job appears in **To Be Applied** on <http://localhost:3000>.
 
 ## Tests
 
