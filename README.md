@@ -224,70 +224,62 @@ npm run dev
 `python manage.py seed --username Adrian` adds sample jobs (needs `--username`
 because every job belongs to an account).
 
-## Chrome extension
+## Run Docker + Chrome extension + Pro account:
+
+1. Configure .env (first time only)
+
+In the repo root:
+echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> .env
+echo "CORS_ALLOWED_ORIGINS=chrome-extension://nlpoghnjoenjhflgmpglnaodoncokahe" >> .env
+The second line lets the extension call the backend. You can skip this step: your .env already has both.
+
+2. Start the stack
+
+docker compose up --build -d
+docker compose ps        # wait until backend shows "healthy"
+The web app runs at http://localhost:3000 and the API at http://localhost:5001. The extension talks to the API directly on port 5001.
+
+3. Create an account (new setups only)
+
+1. Open http://localhost:3000 and choose Sign up: email, username, and a password of at least 10 characters.
+2. Get the verification code from the backend log and enter it:
+docker compose logs backend | grep -i -A3 code
+You can skip this step: adrianndp@hotmail.com already exists in Docker with its 120 jobs. Just sign in.
+
+4. Make the account Pro
+
+docker compose exec backend python manage.py billing_comp adrianndp@hotmail.com
+It should print adrianndp@hotmail.com now has complimentary Pro. Reload http://localhost:3000, and the plan chip in the header should show Pro. To undo it, add --off.
+
+Pro is stored in the Docker database, so it applies only to Docker. Your local localdb doesn't change.
+
+5. Build the extension
+
+cd frontend
+npm install              # first time only
+npm run build:ext        # output goes to frontend/dist-extension
+Already done: I just ran this build, so dist-extension is up to date.
+
+6. Load it in Chrome
+
+1. Go to chrome://extensions and turn on Developer mode (top right).
+2. Click Load unpacked and pick frontend/dist-extension. If an older copy is already loaded, click its reload icon instead.
+3. Check that the ID shown is nlpoghnjoenjhflgmpglnaodoncokahe.
+
+7. Sign in to the extension
+
+1. Open the extension's side panel from the toolbar icon. Pin it first if it's hidden under the puzzle icon.
+2. Sign in with the same email and password. The account must already be verified, which yours is.
+
+8. Try it
+
+Open a job posting on LinkedIn, XING or StepStone and click Save to Job Tracker next to Apply. The job appears in To Be Applied on http://localhost:3000.
 
 ```bash
 cd frontend
 npm install
 npm run build:ext        # or build:all to build the web app too
 ```
-
-For the **Chrome Web Store**, build with the production API host baked in:
-
-```bash
-VITE_API_BASE=https://jobs.example.com npm run build:ext:store
-cd dist-extension && zip -r ../job-tracker-extension.zip . && cd ..
-```
-
-That build has `host_permissions` for that host only, no `optional_host_permissions`, no
-API-host setting in the panel, and no `key` (the store assigns the ID; set
-`CORS_ALLOWED_ORIGINS=chrome-extension://<store id>` once you have it).
-
-Then in Chrome: **chrome://extensions** → enable Developer mode → **Load
-unpacked** → pick `frontend/dist-extension`.
-
-- **Signing in:** email + password of an account whose email is already verified.
-  Sign-up and password reset happen on the website.
-- The extension authenticates with a **bearer token**, not the session cookie: its
-  pages are a different origin, so a `SameSite=Lax` cookie is never sent. The
-  token is stored in `chrome.storage.local`.
-- The backend must allow the extension's origin. Copy the ID Chrome shows and
-  run the backend with `CORS_ALLOWED_ORIGINS=chrome-extension://<id>`.
-- `manifest.json` carries a `key` so that ID stays the same when the folder
-  moves. It is derived from `ext-key.pem`, which is **not** in git -- keep it if
-  you want the ID to survive a fresh checkout.
-- **Saving a job:** right-click a posting → *Save to Job Tracker*. The side
-  panel's form is prefilled from the tab's title and URL -- or from the text you
-  had selected, so you can highlight the real job title first -- and you edit it
-  before anything is saved. To fill in a job by hand, open the side panel; *Use
-  current link* next to the Link field copies the tab's URL in.
-- **LinkedIn:** job pages get a **Save to Job Tracker** button next to Apply /
-  Save. One click saves the title, company and link to *To Be Applied*; move it
-  to *Applied* on the board once you've applied. The link is stored as
-  `https://www.linkedin.com/jobs/view/<id>/`, so a posting opened from search
-  results and from its own page is recognised as the same job: the button shows
-  *Tracked · <column>* instead of saving it twice, and clicking it opens the
-  board.
-- **XING:** job pages (`/jobs/<slug>-<id>`) get the same button, after
-  *Einfach bewerben* / *Job merken*. The link is stored as
-  `https://www.xing.com/jobs/<slug>-<id>` with tracking parameters stripped (the
-  slug stays: XING treats `/jobs/<id>` as a search), and a posting counts as
-  already saved when its numeric id matches.
-- **StepStone:** job pages (`/stellenangebote--<slug>--<id>-inline.html`) get the
-  button after *Speichern*. The link is stored without tracking parameters, and
-  a posting counts as already saved when its numeric id matches.
-- **What the extension reads:** only `linkedin.js` on `www.linkedin.com`,
-  `xing.js` on `www.xing.com` and `stepstone.js` on `www.stepstone.de` read page
-  content -- the title and company of the posting on screen. Everywhere else a
-  draft is built from tab metadata alone, and there is no `scripting`
-  permission. These sites change their markup; if the button stops appearing,
-  the selectors at the top of the board's script in `extension/src/` are what to
-  update. URL handling for all of them lives in `extension/src/jobBoards.js`.
-- **Changing the API host:** the side panel's footer (development builds only).
-  Pointing at an HTTPS host triggers an optional-permission prompt for that origin.
-- **Revoking a device:** `DELETE /api/auth/tokens/<id>` (list them with
-  `GET /api/auth/tokens`). A password change or reset revokes every token and
-  session at once.
 
 ## Tests
 
