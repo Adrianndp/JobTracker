@@ -248,8 +248,8 @@ You can skip this step: adrianndp@hotmail.com already exists in Docker with its 
 
 4. Make the account Pro
 
-docker compose exec backend python manage.py billing_comp adrianndp@hotmail.com
-It should print adrianndp@hotmail.com now has complimentary Pro. Reload http://localhost:3000, and the plan chip in the header should show Pro. To undo it, add --off.
+docker compose exec backend python manage.py billing_comp example@hotmail.com
+It should print example@hotmail.com now has complimentary Pro. Reload http://localhost:3000, and the plan chip in the header should show Pro. To undo it, add --off.
 
 Pro is stored in the Docker database, so it applies only to Docker. Your local localdb doesn't change.
 
