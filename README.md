@@ -241,10 +241,9 @@ The web app runs at http://localhost:3000 and the API at http://localhost:5001. 
 
 3. Create an account (new setups only)
 
-1. Open http://localhost:3000 and choose Sign up: email, username, and a password of at least 10 characters.
+1. Open http://localhost:3000 and choose Sign up: email, username, and a password of at least 10 characters. For example example@hotmail.com
 2. Get the verification code from the backend log and enter it:
 docker compose logs backend | grep -i -A3 code
-You can skip this step: adrianndp@hotmail.com already exists in Docker with its 120 jobs. Just sign in.
 
 4. Make the account Pro
 
