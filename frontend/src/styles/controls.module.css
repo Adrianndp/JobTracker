@@ -213,6 +213,13 @@
   border-color: var(--accent-border);
 }
 
+.alertWarning {
+  composes: alert;
+  color: var(--warning);
+  background: var(--warning-subtle);
+  border-color: var(--warning-border);
+}
+
 .alertSuccess {
   composes: alert;
   color: var(--success);

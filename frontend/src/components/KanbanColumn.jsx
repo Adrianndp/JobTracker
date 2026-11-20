@@ -3,11 +3,23 @@ import { ChevronDown } from 'lucide-react'
 import JobCard from './JobCard'
 import styles from './KanbanColumn.module.css'
 
-export default function KanbanColumn({ column, jobs, onDelete, onEdit, forceExpanded, collapsed, onToggle }) {
+export default function KanbanColumn({
+  column, jobs, onDelete, onEdit, forceExpanded, collapsed, onToggle, companyIndex, onShowCompany, statusLabels,
+}) {
   // Empty columns are always open; active filter forces all columns open
   const isCollapsed = !forceExpanded && collapsed && jobs.length > 0
   const cards = jobs.map((job, index) => (
-    <JobCard key={job.id} job={job} index={index} color={column.color} onDelete={onDelete} onEdit={onEdit} />
+    <JobCard
+      key={job.id}
+      job={job}
+      index={index}
+      color={column.color}
+      onDelete={onDelete}
+      onEdit={onEdit}
+      companyGroup={companyIndex?.byName.get(job.company?.trim())}
+      onShowCompany={onShowCompany}
+      statusLabels={statusLabels}
+    />
   ))
 
   const StatusIcon = column.icon

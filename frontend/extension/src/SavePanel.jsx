@@ -3,6 +3,7 @@ import { ArrowUpRight, BookmarkPlus, Link2, Server } from 'lucide-react'
 import { useAuthStatus, useJobs, useUnauthorized } from '@app/api'
 import { safeHref } from '@app/lib/safeUrl'
 import ExtensionLogin from '@app/components/ExtensionLogin'
+import CompanyMatches from '@app/components/CompanyMatches'
 import { postingFromUrl } from './jobBoards'
 import { API_HOST_FIXED, defaultApiBase, ensureHostPermission, getApiBase, setApiBase } from './settings'
 import { clearToken, getCachedToken, setToken } from './tokenStore'
@@ -71,7 +72,7 @@ function ApiHostSetting({ onChanged }) {
   )
 }
 
-function SaveForm({ onSaved }) {
+function SaveForm({ jobs, onSaved }) {
   const [form, setForm] = useState(EMPTY)
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
@@ -162,6 +163,11 @@ function SaveForm({ onSaved }) {
       <div className={styles.field}>
         <label className={styles.label} htmlFor="company">Company</label>
         <input id="company" className={styles.input} value={form.company} onChange={set('company')} />
+        <CompanyMatches
+          company={form.company}
+          jobs={jobs}
+          onUseSpelling={(company) => setForm((f) => ({ ...f, company }))}
+        />
       </div>
       <div className={styles.field}>
         <label className={styles.label} htmlFor="salary">
@@ -196,17 +202,7 @@ function SaveForm({ onSaved }) {
   )
 }
 
-function RecentSaves({ refreshKey }) {
-  const { jobs, setJobs } = useJobs(true)
-
-  useEffect(() => {
-    const listener = (message) => {
-      if (message?.type === 'job-created') setJobs((prev) => [message.job, ...prev])
-    }
-    chrome.runtime.onMessage.addListener(listener)
-    return () => chrome.runtime.onMessage.removeListener(listener)
-  }, [setJobs])
-
+function RecentSaves({ jobs, refreshKey }) {
   const recent = jobs.slice(0, 5)
 
   // Always shown, even before the first save: "Open board" is the panel's only
@@ -236,7 +232,6 @@ function RecentSaves({ refreshKey }) {
 export default function SavePanel({ onApiBaseChanged }) {
   const authStatus = useAuthStatus()
   const [session, setSession] = useState(() => (getCachedToken() ? undefined : 'login'))
-  const [saved, setSaved] = useState(0)
 
   useUnauthorized(() => {
     clearToken()
@@ -265,10 +260,26 @@ export default function SavePanel({ onApiBaseChanged }) {
     )
   }
 
+  return <SignedInPanel onApiBaseChanged={onApiBaseChanged} />
+}
+
+function SignedInPanel({ onApiBaseChanged }) {
+  const [saved, setSaved] = useState(0)
+  // Also what the save form checks a company against (already applied there?)
+  const { jobs, setJobs } = useJobs(true)
+
+  useEffect(() => {
+    const listener = (message) => {
+      if (message?.type === 'job-created') setJobs((prev) => [message.job, ...prev])
+    }
+    chrome.runtime.onMessage.addListener(listener)
+    return () => chrome.runtime.onMessage.removeListener(listener)
+  }, [setJobs])
+
   return (
     <div className={styles.panel}>
-      <SaveForm onSaved={() => setSaved((n) => n + 1)} />
-      <RecentSaves refreshKey={saved} />
+      <SaveForm jobs={jobs} onSaved={() => setSaved((n) => n + 1)} />
+      <RecentSaves jobs={jobs} refreshKey={saved} />
       <SettingsRow onChanged={onApiBaseChanged} />
     </div>
   )

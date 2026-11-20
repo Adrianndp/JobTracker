@@ -16,6 +16,7 @@ import {
   useJobs, useCreateJob, useUpdateJob, useDeleteJob, webAppUrl,
 } from './api'
 import { celebrate } from './lib/celebrate'
+import { indexCompanies, sameCompany } from './lib/companyMatch'
 import styles from './App.module.css'
 
 const ACTIVE_STATUSES = ['to_be_applied', 'applied', 'in_interview']
@@ -81,10 +82,8 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
   const { updateJob } = useUpdateJob()
   const { deleteJob } = useDeleteJob()
 
-  const companies = useMemo(
-    () => [...new Set(jobs.map(j => j.company).filter(Boolean))].sort(),
-    [jobs]
-  )
+  // Jobs grouped by company, spelling variants together ("Siemens" / "Siemens AG")
+  const companyIndex = useMemo(() => indexCompanies(jobs), [jobs])
 
   // Counted here rather than re-fetched, so the plan chip follows every move at once.
   // Same rule as backend/billing/plans.py.
@@ -93,9 +92,20 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
     active_jobs: jobs.filter(j => ACTIVE_STATUSES.includes(j.status)).length,
   }
 
+  // A filter chip names a company group, so it also shows the other spellings.
+  // A chip whose spelling has since been renamed away falls back to fuzzy matching.
+  const filterGroups = new Set(companyFilters.map(f => (
+    companyIndex.byName.get(f) ?? companyIndex.groups.find(g => g.variants.some(v => sameCompany(v, f)))
+  )?.id))
   const visibleJobs = companyFilters.length === 0
     ? jobs
-    : jobs.filter(j => companyFilters.includes(j.company))
+    : jobs.filter(j => filterGroups.has(companyIndex.byName.get(j.company?.trim())?.id))
+
+  // From a card's "+2 here" badge: just that company, from the top
+  const showCompany = (name) => {
+    setCompanyFilters([name])
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const signOut = () => {
     setShowModal(false)
@@ -330,7 +340,7 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
           <>
             <div className={styles.filterRow}>
               <CompanyFilter
-                companies={companies}
+                groups={companyIndex.groups}
                 filters={companyFilters}
                 onFiltersChange={setCompanyFilters}
               />
@@ -353,6 +363,8 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
               onMove={moveJob}
               onDelete={removeJob}
               onEdit={setEditingJob}
+              companyIndex={companyIndex}
+              onShowCompany={showCompany}
               forceExpanded={companyFilters.length > 0}
               collapsedCols={collapsedCols}
               setCollapsedCols={setCollapsedCols}
@@ -367,6 +379,7 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
 
       {showModal && (
         <AddJobModal
+          jobs={jobs}
           onClose={() => setShowModal(false)}
           onAdd={addJob}
           onUpgrade={billing?.enabled ? showPlans : undefined}
@@ -376,6 +389,7 @@ export default function App({ authMode = 'session', onSignIn, onSignOut }) {
       {editingJob && (
         <AddJobModal
           job={editingJob}
+          jobs={jobs}
           onClose={() => setEditingJob(null)}
           onSave={saveJob}
         />

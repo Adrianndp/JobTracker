@@ -103,13 +103,45 @@
   composes: menu from '../styles/controls.module.css';
   top: calc(100% + var(--space-2));
   left: calc(-1 * var(--space-2));
-  min-width: 220px;
+  min-width: 240px;
+  max-width: 360px;
   max-height: 320px;
   overflow-y: auto;
 }
 
 .option {
   composes: menuItem from '../styles/controls.module.css';
+}
+
+.option svg {
+  flex-shrink: 0;
+}
+
+.optionText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.optionName,
+.optionAlso {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Other spellings the same company was saved under */
+.optionAlso {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.optionCount {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Clear all ───────────────────────────────────── */

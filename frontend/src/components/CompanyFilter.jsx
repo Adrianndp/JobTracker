@@ -2,13 +2,18 @@ import { useState, useRef, useEffect } from 'react'
 import { Building2, Search, X } from 'lucide-react'
 import styles from './CompanyFilter.module.css'
 
-export default function CompanyFilter({ companies, filters, onFiltersChange }) {
+/**
+ * groups come from lib/companyMatch indexCompanies: one entry per company, with
+ * every spelling it was saved under, so "Siemens" also finds "Siemens AG".
+ */
+export default function CompanyFilter({ groups, filters, onFiltersChange }) {
   const [input, setInput] = useState('')
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef(null)
 
-  const suggestions = companies.filter(
-    c => !filters.includes(c) && c.toLowerCase().includes(input.toLowerCase())
+  const query = input.trim().toLowerCase()
+  const suggestions = groups.filter(
+    g => !filters.includes(g.name) && g.variants.some(v => v.toLowerCase().includes(query))
   )
 
   useEffect(() => {
@@ -38,7 +43,7 @@ export default function CompanyFilter({ companies, filters, onFiltersChange }) {
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && suggestions.length === 1) {
-      add(suggestions[0])
+      add(suggestions[0].name)
     }
     if (e.key === 'Escape') {
       setOpen(false)
@@ -70,10 +75,21 @@ export default function CompanyFilter({ companies, filters, onFiltersChange }) {
           />
           {open && suggestions.length > 0 && (
             <div className={styles.dropdown}>
-              {suggestions.map(s => (
-                <button key={s} className={styles.option} onMouseDown={() => add(s)}>
+              {suggestions.map(g => (
+                <button
+                  key={g.id}
+                  className={styles.option}
+                  onMouseDown={() => add(g.name)}
+                  title={g.variants.length > 1 ? `Saved as: ${g.variants.join(', ')}` : undefined}
+                >
                   <Building2 size={14} />
-                  {s}
+                  <span className={styles.optionText}>
+                    <span className={styles.optionName}>{g.name}</span>
+                    {g.variants.length > 1 && (
+                      <span className={styles.optionAlso}>also {g.variants.slice(1).join(', ')}</span>
+                    )}
+                  </span>
+                  <span className={styles.optionCount}>{g.jobs.length}</span>
                 </button>
               ))}
             </div>

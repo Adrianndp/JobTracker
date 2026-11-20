@@ -43,7 +43,11 @@ export const COLUMNS = [
   },
 ]
 
-export default function KanbanBoard({ jobs, onMove, onDelete, onEdit, forceExpanded, collapsedCols, setCollapsedCols }) {
+const STATUS_LABELS = Object.fromEntries(COLUMNS.map(c => [c.id, c.label]))
+
+export default function KanbanBoard({
+  jobs, onMove, onDelete, onEdit, forceExpanded, collapsedCols, setCollapsedCols, companyIndex, onShowCompany,
+}) {
   const handleDragEnd = ({ draggableId, destination }) => {
     if (!destination) return
     onMove(parseInt(draggableId), destination.droppableId)
@@ -60,6 +64,9 @@ export default function KanbanBoard({ jobs, onMove, onDelete, onEdit, forceExpan
             jobs={jobs.filter(j => j.status === col.id)}
             onDelete={onDelete}
             onEdit={onEdit}
+            companyIndex={companyIndex}
+            onShowCompany={onShowCompany}
+            statusLabels={STATUS_LABELS}
             forceExpanded={forceExpanded}
             collapsed={collapsedCols[col.id]}
             onToggle={() => setCollapsedCols(prev => ({ ...prev, [col.id]: !prev[col.id] }))}

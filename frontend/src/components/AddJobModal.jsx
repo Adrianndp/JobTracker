@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { ApiError } from '../api'
+import CompanyMatches from './CompanyMatches'
 import styles from './AddJobModal.module.css'
 
-export default function AddJobModal({ onClose, onAdd, onSave, onUpgrade, job }) {
+export default function AddJobModal({ onClose, onAdd, onSave, onUpgrade, job, jobs = [] }) {
   const isEdit = Boolean(job)
   const [form, setForm] = useState({
     name: job?.name ?? '',
@@ -93,6 +94,12 @@ export default function AddJobModal({ onClose, onAdd, onSave, onUpgrade, job }) 
               placeholder="e.g. Stripe"
               value={form.company}
               onChange={set('company')}
+            />
+            <CompanyMatches
+              company={form.company}
+              jobs={jobs}
+              exceptId={job?.id}
+              onUseSpelling={(company) => setForm(f => ({ ...f, company }))}
             />
           </div>
 

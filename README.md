@@ -8,6 +8,12 @@ extension that saves a posting from a job page in one click.
 - Drag cards between columns
 - Add jobs via modal (title required, URL and salary optional)
 - Delete cards with confirmation
+- Same-company check: typing a company in the add/edit dialog (or the extension's side panel)
+  lists the jobs you already have there, and warns if you applied before. Spellings are matched
+  loosely, so "Siemens AG", "siemens" and "Siemens GmbH" count as one company, as do
+  "Müller"/"Mueller", "Robert Bosch GmbH"/"Bosch" and one-letter typos. Cards that share a
+  company get a "+N here" badge ("Applied here before" on a To Be Applied card); clicking it
+  filters the board to that company, and the company filter covers every spelling.
 - PostgreSQL database via the Django ORM
 - Chrome extension: save the page you are on to your board, and view the full
   board in a tab
@@ -47,12 +53,13 @@ frontend/src/
   App.jsx           auth gate, board state, API calls
   api.ts            fetch helper + hooks (shared with the extension)
   lib/              transport.ts (api base + auth scheme), safeUrl.ts, paddle.ts (checkout),
-                    celebrate.ts (confetti when a job moves to "Got an Offer")
+                    celebrate.ts (confetti when a job moves to "Got an Offer"),
+                    companyMatch.ts (fuzzy "same company?" matching and grouping)
   styles/           tokens.css (colours, type, spacing, ...) and controls.module.css (shared
                     buttons, inputs, menus, modals), used by the web app and the extension pages
   components/       LoginPage (website sign-in flows), ExtensionLogin (the extension's token
                     sign-in), AuthCard (the frame both share), KanbanBoard, KanbanColumn,
-                    JobCard, AddJobModal, CompanyFilter, ExportMenu, PricingPage, UpgradeFlow (plan → review → pay → done),
+                    JobCard, AddJobModal, CompanyMatches (the same-company hint), CompanyFilter, ExportMenu, PricingPage, UpgradeFlow (plan → review → pay → done),
                     AccountModal (plan & billing, invoices, delete account), LegalLinks,
                     Logo (the app mark; icons elsewhere are lucide-react)
 frontend/public/legal/  Impressum, Datenschutz, AGB (drafts with placeholders)

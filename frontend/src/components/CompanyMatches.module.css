@@ -1,0 +1,100 @@
+.info {
+  composes: alertInfo from '../styles/controls.module.css';
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+
+.warning {
+  composes: alertWarning from '../styles/controls.module.css';
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+
+.title {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.title svg {
+  flex-shrink: 0;
+  margin-top: var(--space-0-5);
+}
+
+.title strong {
+  font-weight: var(--weight-semibold);
+  word-break: break-word;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-left: var(--space-0-5);
+  font-size: var(--text-xs);
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--col-color);
+}
+
+.jobName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-weight: var(--weight-medium);
+}
+
+.meta {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.more {
+  padding-left: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.useBtn {
+  composes: link from '../styles/controls.module.css';
+  align-self: flex-start;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Takes the alert's colour; the extra class beats the shared link's own colour
+   whatever order the two stylesheets load in */
+.info .useBtn,
+.warning .useBtn {
+  color: inherit;
+}
+
+.info .useBtn:hover,
+.warning .useBtn:hover {
+  color: inherit;
+  text-decoration-thickness: 2px;
+}

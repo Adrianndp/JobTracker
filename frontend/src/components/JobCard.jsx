@@ -1,5 +1,5 @@
 import { Draggable } from '@hello-pangea/dnd'
-import { ArrowUpRight, CalendarDays, MessagesSquare, Pencil, Trash2 } from 'lucide-react'
+import { ArrowUpRight, Building2, CalendarDays, History, MessagesSquare, Pencil, Trash2 } from 'lucide-react'
 import { safeHref } from '../lib/safeUrl'
 import styles from './JobCard.module.css'
 
@@ -10,9 +10,16 @@ const formatDate = (iso) => {
   return `${date} · ${time}`
 }
 
-export default function JobCard({ job, index, color, onDelete, onEdit }) {
+export default function JobCard({ job, index, color, onDelete, onEdit, companyGroup, onShowCompany, statusLabels = {} }) {
   // null when job.link isn't an http(s) URL (legacy notes, or anything scraped)
   const href = safeHref(job.link)
+  // Other jobs at the same company, however it was spelled (lib/companyMatch)
+  const siblings = companyGroup ? companyGroup.jobs.filter(j => j.id !== job.id) : []
+  // The case worth a warning: about to apply somewhere you already did
+  const appliedBefore = job.status === 'to_be_applied' && siblings.some(j => j.status !== 'to_be_applied')
+  const siblingSummary = siblings
+    .map(j => `${j.name} (${statusLabels[j.status] ?? j.status})${j.company !== job.company ? ` at ${j.company}` : ''}`)
+    .join('\n')
   const handleDelete = (e) => {
     e.stopPropagation()
     if (window.confirm(`Remove "${job.name}"?`)) {
@@ -23,6 +30,11 @@ export default function JobCard({ job, index, color, onDelete, onEdit }) {
   const handleEdit = (e) => {
     e.stopPropagation()
     onEdit(job)
+  }
+
+  const handleShowCompany = (e) => {
+    e.stopPropagation()
+    onShowCompany?.(companyGroup.name)
   }
 
   return (
@@ -78,7 +90,7 @@ export default function JobCard({ job, index, color, onDelete, onEdit }) {
               </div>
             )}
 
-            {(job.link || job.had_interview) && (
+            {(job.link || job.had_interview || siblings.length > 0) && (
               <div className={styles.footerRow}>
                 {job.link && !href && (
                   <span className={styles.linkPlain}>{job.link}</span>
@@ -95,12 +107,27 @@ export default function JobCard({ job, index, color, onDelete, onEdit }) {
                     <ArrowUpRight size={12} />
                   </a>
                 )}
-                {job.had_interview && (
-                  <span className={styles.interviewBadge}>
-                    <MessagesSquare size={12} />
-                    {job.status === 'in_interview' ? 'Interviewing' : 'Interviewed'}
-                  </span>
-                )}
+                <span className={styles.badges}>
+                  {job.had_interview && (
+                    <span className={styles.interviewBadge}>
+                      <MessagesSquare size={12} />
+                      {job.status === 'in_interview' ? 'Interviewing' : 'Interviewed'}
+                    </span>
+                  )}
+                  {siblings.length > 0 && (
+                    <button
+                      type="button"
+                      className={appliedBefore ? styles.appliedBeforeBadge : styles.companyBadge}
+                      onClick={handleShowCompany}
+                      title={`Also at this company:\n${siblingSummary}\n\nClick to show them all`}
+                      aria-label={`${siblings.length} other ${siblings.length === 1 ? 'job' : 'jobs'} at ${companyGroup.name}`
+                        + `${appliedBefore ? ', already applied there' : ''}. Show all jobs at this company`}
+                    >
+                      {appliedBefore ? <History size={12} /> : <Building2 size={12} />}
+                      {appliedBefore ? 'Applied here before' : `+${siblings.length} here`}
+                    </button>
+                  )}
+                </span>
               </div>
             )}
           </div>

@@ -176,3 +176,38 @@
   color: var(--interview);
   background: var(--interview-subtle);
 }
+
+.badges {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+  margin-left: auto;
+}
+
+/* Other jobs at the same company: a button, it filters the board to them */
+.companyBadge {
+  composes: badge from '../styles/controls.module.css';
+  border: none;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
+}
+
+.companyBadge:hover {
+  background: var(--bg-active);
+  color: var(--text);
+}
+
+.appliedBeforeBadge {
+  composes: badge from '../styles/controls.module.css';
+  border: none;
+  cursor: pointer;
+  color: var(--warning);
+  background: var(--warning-subtle);
+  box-shadow: inset 0 0 0 1px var(--warning-border);
+  transition: box-shadow var(--duration-fast) var(--ease);
+}
+
+.appliedBeforeBadge:hover {
+  box-shadow: inset 0 0 0 1px var(--warning);
+}

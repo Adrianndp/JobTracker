@@ -383,6 +383,14 @@ EU hosting.
   button. Moving a job to "Got an Offer" fires confetti (`lib/celebrate.ts`, canvas-confetti
   loaded on first use, skipped with reduced motion). Open: content-script button
   (`trackerButton.js`) still has its own inline styles (logo/colours synced by hand); no dark mode.
+- **Same-company check ✅ done 2026-11-20:** `lib/companyMatch.ts` matches company names loosely
+  (legal forms, umlauts, case, spacing, one-word typos, "Bosch" inside "Robert Bosch"; generic
+  words like "Deutsche" never match on their own). The add/edit dialog and the extension side
+  panel show the jobs already at that company (`CompanyMatches.jsx`) and offer the existing
+  spelling; cards get a "+N here" / "Applied here before" badge that filters the board; the company
+  filter groups spellings. Client-side only, no model change. Open: warn on the in-page LinkedIn /
+  XING / StepStone button too (`find-board-job` could also return company matches); a one-click
+  "rename all spellings" clean-up.
 - Landing page with pricing, German and English.
 - Support email address and a short FAQ.
 - Positioning: "Made for the German job market, hosted in the EU, your data is never sold."
