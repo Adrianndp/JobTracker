@@ -1,4 +1,4 @@
-# Job Tracker
+# Job Tracker Chrome Extension
 
 A kanban-style job application tracker built with Django + React, plus a Chrome
 extension that saves a posting from a job page in one click.
