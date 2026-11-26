@@ -1,3 +1,7 @@
+# Direct dependencies, pinned. Edit this file, then regenerate the lockfile:
+#   uv pip compile requirements.in --universal --python-version 3.12 --generate-hashes -o requirements.txt
+# and install it with: uv pip sync requirements.txt
+
 django==5.2.17
 gunicorn==23.0.0
 psycopg[binary]==3.3.6

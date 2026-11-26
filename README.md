@@ -27,6 +27,8 @@ extension that saves a posting from a job page in one click.
 ```
 backend/
   manage.py         Django entry point (`runserver` defaults to port 5001)
+  requirements.in   direct dependencies (edit this one)
+  requirements.txt  lockfile generated from it by uv: every package, pinned, with hashes
   config/           settings (secret key, sessions, database), URL routes, health check, serves the built frontend
   accounts/
     models.py       User (Django's AbstractUser) + ApiToken for the extension
@@ -210,8 +212,9 @@ Backend (Django, port 5001):
 
 ```bash
 cd backend
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
+uv venv                                   # creates .venv (install uv: https://docs.astral.sh/uv/)
+uv pip sync requirements.txt              # installs exactly the locked set, removes anything else
+source .venv/bin/activate
 set -a && . ../.env && set +a            # loads DATABASE_URL (manage.py won't start without it)
 python manage.py migrate                  # creates/updates the tables
 python manage.py createcachetable         # backs the login throttle
@@ -219,6 +222,18 @@ python manage.py runserver
 ```
 
 Run `python manage.py migrate` again after pulling changes that add migrations. Docker does this on startup.
+
+Dependencies: add or bump a package in `requirements.in`, then regenerate the lockfile and
+install it (`--universal --python-version 3.12` keeps it valid from Docker's Python 3.12 up to newer local
+Pythons; without the floor, packages only older Pythons need get left out):
+
+```bash
+uv pip compile requirements.in --universal --python-version 3.12 --generate-hashes -o requirements.txt
+uv pip sync requirements.txt
+```
+
+`uv pip compile ... --upgrade` moves everything unpinned (the indirect dependencies) to the
+latest versions. Docker installs the same `requirements.txt` with plain pip, which checks the hashes.
 
 Frontend (Vite, port 3000, proxies `/api` → `localhost:5001`):
 

@@ -391,6 +391,10 @@ EU hosting.
   filter groups spellings. Client-side only, no model change. Open: warn on the in-page LinkedIn /
   XING / StepStone button too (`find-board-job` could also return company matches); a one-click
   "rename all spellings" clean-up.
+- **Locked Python dependencies ✅ done 2026-11-26:** `backend/requirements.in` holds the direct
+  deps; `requirements.txt` is the uv lockfile (`uv pip compile --universal --python-version 3.12 --generate-hashes`), so
+  indirect deps are pinned and hash-checked in Docker too. Local setup uses `uv venv` +
+  `uv pip sync`. The Dockerfile still uses pip (hashes enforced); switching it to uv is optional.
 - Landing page with pricing, German and English.
 - Support email address and a short FAQ.
 - Positioning: "Made for the German job market, hosted in the EU, your data is never sold."

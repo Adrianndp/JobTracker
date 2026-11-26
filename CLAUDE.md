@@ -19,7 +19,7 @@ scripts/check.sh backend [labels]   # e.g. scripts/check.sh backend jobs.tests.O
 scripts/check.sh frontend           # npm run build:all
 ```
 
-Manual equivalents (the backend venv is `backend/.venv`, not `venv` as the README says):
+Manual equivalents (the backend venv is `backend/.venv`, managed with uv):
 
 ```bash
 cd backend && set -a && . ../.env && set +a   # manage.py refuses to start without DATABASE_URL
@@ -28,6 +28,11 @@ cd backend && set -a && . ../.env && set +a   # manage.py refuses to start witho
 cd frontend && npm run dev                    # port 3000, proxies /api -> 5001
 cd frontend && npm run build:ext              # extension -> frontend/dist-extension (load unpacked)
 ```
+
+Python dependencies: edit `backend/requirements.in` (direct deps only), never `requirements.txt`
+by hand — it's the uv lockfile. Regenerate with
+`uv pip compile requirements.in --universal --python-version 3.12 --generate-hashes -o requirements.txt`, then
+`uv pip sync requirements.txt` (README "Run manually").
 
 There is no JS test runner or linter; for frontend changes the build passing plus a look
 in the browser (see the `run-app` skill) is the check.
