@@ -403,6 +403,25 @@ EU hosting.
 Store, saves jobs from LinkedIn / XING / StepStone, upgrades, pays VAT-correctly, and can cancel
 or delete their account themselves.
 
+## Phase 7 — MCP server (added 2026-11-26)
+
+A standalone MCP microservice in `mcp_server/` so Claude Code and other MCP clients can work
+with the tracker. Decisions: FastMCP 4 (not FastAPI, not the low-level `mcp` SDK), uv with a
+committed `uv.lock`, Python 3.13, streamable HTTP at `/mcp`, its own Dockerfile and compose
+service (`127.0.0.1:8001`), no imports from `backend/` and no shared database.
+
+- [x] Skeleton with a dummy `greet` tool, `GET /health`, in-memory pytest, Docker + compose,
+  README — done 2026-11-26
+- [x] How the server reaches the data: through the backend's `/api/` with the user's own
+  `ApiToken`, which the MCP client sends as `Authorization: Bearer` and the server forwards.
+  Decided 2026-11-26: own jobs only. There is no service key or admin endpoint, so the MCP
+  server can never read another user's data
+- [x] First resource, `jobtracker://users/{username}/jobs` (resource template; any other
+  username is "not found"), `BACKEND_URL`, tests with a mocked backend — done 2026-11-26
+- [ ] More tools/resources (single job, create/move jobs). Later: OAuth for MCP in place of
+  pasted tokens
+- [ ] Add `uv run pytest` for `mcp_server/` to `scripts/check.sh`
+
 ## Order and size
 
 | Phase | What | Rough size | Blocks |

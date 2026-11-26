@@ -1,6 +1,7 @@
 # Python
 backend/.venv/
 backend/venv/
+mcp_server/.venv/
 __pycache__/
 *.pyc
 backend/instance/

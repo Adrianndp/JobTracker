@@ -33,7 +33,7 @@ services:
     container_name: jobtracker-backend
     environment:
       SECRET_KEY: ${SECRET_KEY:-}                        # empty → generated once into backend/instance/secret_key
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1},backend   # `backend`: the mcp container calls http://backend:5001
       HTTPS: ${HTTPS:-0}                                 # 1 enables SSL redirect, HSTS and secure cookies
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-0} # legacy alias for HTTPS, still honoured
       CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
@@ -77,6 +77,21 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    restart: unless-stopped
+
+  mcp:
+    build: ./mcp_server                    # standalone MCP server; reaches jobs only through the backend's /api/
+    container_name: jobtracker-mcp
+    environment:
+      BACKEND_URL: http://backend:5001     # no depends_on: it starts without the backend and reports it unreachable
+    ports:
+      - "127.0.0.1:8001:8000"              # MCP endpoint at /mcp (host only)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
     restart: unless-stopped
 
 volumes:

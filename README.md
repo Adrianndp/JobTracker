@@ -74,6 +74,9 @@ frontend/extension/
   src/xing.js       content script: the same button on XING job pages
   src/stepstone.js  content script: the same button on StepStone job pages
   src/trackerButton.js  the button and page watcher the content scripts share
+mcp_server/           standalone MCP server (FastMCP, uv); see "MCP server" below
+  main.py           the server: tools, GET /health, streamable HTTP on :8000/mcp
+  tests/            pytest, via FastMCP's in-memory client
 scripts/backup-db.sh  nightly pg_dump for the docker-compose deployment
 scripts/check.sh      migration check, backend tests and all builds, in one command
 ```
@@ -189,6 +192,7 @@ docker compose up --build
 
 - App: http://localhost:3000
 - Backend API (direct): http://localhost:5001
+- MCP server: http://localhost:8001/mcp (see "MCP server" below)
 - Database: PostgreSQL 17 in the `db` service, stored in the `pgdata` Docker volume (survives rebuilds; `docker compose down -v` deletes it). Reachable from the host at `localhost:5433` for psql or backups:
 
   ```bash
@@ -245,6 +249,80 @@ npm run dev
 
 `python manage.py seed --username Adrian` adds sample jobs (needs `--username`
 because every job belongs to an account).
+
+## MCP server
+
+`mcp_server/` is a separate microservice that gives MCP clients such as Claude Code access to
+the job tracker. It's built on [FastMCP](https://gofastmcp.com) 4 and has its own
+dependencies, Dockerfile and Python (3.13). It imports nothing from `backend/` and
+doesn't touch the database: it reads job data through the backend's `/api/`, like the Chrome
+extension does.
+
+What it offers so far:
+
+- tool `greet`: returns `"hello"`, to check the connection.
+- resource template `jobtracker://users/{username}/jobs`: that user's jobs as JSON (the same
+  objects `GET /api/jobs` returns), newest first.
+
+**Auth.** The MCP client sends a Job Tracker API token as `Authorization: Bearer <token>`, and
+the server passes it on to the backend unchanged, so it can only ever see that token's user.
+The resource checks `{username}` against the token's user (`GET /api/auth/status`). Any other
+username answers "No jobs found", whether or not it exists, so the resource can't be used to
+find out which usernames exist. The match is case-sensitive.
+
+| Env var | Default | |
+|---|---|---|
+| `BACKEND_URL` | `http://localhost:5001` | where the backend API is; compose sets `http://backend:5001` |
+
+In compose, the backend's `ALLOWED_HOSTS` gets `backend` added so that this internal call
+passes Django's host check. With `HTTPS=1`, Django redirects plain-HTTP calls to HTTPS, so
+point `BACKEND_URL` at the public `https://` address instead.
+
+It uses the streamable HTTP transport with the MCP endpoint at `/mcp`, plus `GET /health`
+for the Docker healthcheck. Only `localhost`, `127.0.0.1` and `::1` are accepted as `Host`
+headers (FastMCP's `host_origin_protection=True`) so a web page can't reach it through DNS
+rebinding. Any other host gets `421`. To serve it under a real hostname, add that name to
+`allowed_hosts` in `main.py`.
+
+Run it locally with [uv](https://docs.astral.sh/uv/) (port 8000):
+
+```bash
+cd mcp_server
+uv sync                  # creates .venv from uv.lock, including the dev group (pytest)
+uv run main.py           # http://localhost:8000/mcp
+uv run pytest            # tests
+```
+
+Or run it with Docker (published at `127.0.0.1:8001`). It starts without `backend`, but the jobs
+resource needs it running:
+
+```bash
+docker compose up -d --build mcp
+curl http://localhost:8001/health          # -> ok
+```
+
+Get an API token. This is the same sign-in the extension uses. The token is valid for 90 days,
+and changing your password or calling `DELETE /api/auth/tokens/<id>` revokes it.
+
+```bash
+curl -s -X POST http://localhost:5001/api/auth/token -H 'Content-Type: application/json' \
+  -d '{"email": "you@example.com", "password": "...", "device_name": "Claude Code MCP"}'
+# -> {"token": "...", "expires_at": "...", "username": "..."}
+```
+
+Connect Claude Code to it with that token (local scope keeps it out of the repo):
+
+```bash
+claude mcp add --transport http jobtracker http://localhost:8001/mcp \
+  --header "Authorization: Bearer <token>"
+```
+
+(Use port `8000` for a server started with `uv run main.py`.) Then ask Claude to call `greet`,
+or to read `jobtracker://users/<your username>/jobs`.
+
+Dependencies: `uv add <package>` (or `uv add --dev <package>`) updates `pyproject.toml` and
+`uv.lock`, and both get committed. The Docker build runs `uv sync --frozen --no-dev`, so it
+installs exactly what the lockfile says.
 
 ## Run Docker + Chrome Extension + Pro Account
 
@@ -331,6 +409,8 @@ cd backend && python manage.py test
 
 `scripts/check.sh` runs that (loading `.env` for you) plus `makemigrations --check` and
 `npm run build:all`; `scripts/check.sh backend jobs` runs one app's tests.
+
+The MCP server has its own tests, which `check.sh` doesn't run yet: `cd mcp_server && uv run pytest`.
 
 This uses whatever `DATABASE_URL` points at (creating and dropping a `test_` database), so run it with the
 Postgres URL set to test what production runs on.

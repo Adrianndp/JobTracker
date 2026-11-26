@@ -44,6 +44,8 @@ in the browser (see the `run-app` skill) is the check.
   `backend/billing/` Paddle, plans, webhooks.
 - `frontend/src/` the web app; `frontend/extension/` the Chrome extension, which reuses
   `App.jsx` for its board page via the `@app` alias.
+- `mcp_server/` standalone MCP server (FastMCP 4, Python 3.13, uv: `uv add`, commit `uv.lock`,
+  `uv run pytest`). Independent: never import from `backend/` or share its database.
 - `frontend/extension/src/jobBoards.js` URL parsing for every supported board;
   `trackerButton.js` the shared in-page button; one content script per board.
 
