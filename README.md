@@ -1,4 +1,4 @@
-# Job Tracker Chrome Extension
+# Job Tracker Chrome Extension + MCP Server
 
 A kanban-style job application tracker built with Django + React, plus a Chrome
 extension that saves a posting from a job page in one click.
